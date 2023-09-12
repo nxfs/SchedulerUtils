@@ -65,20 +65,26 @@ Equivalent functionality than perf-schtest.sh but runs in QEMU.
 Example:
 `./bin/perf-schtest-qemu.sh /home/ubuntu/linux-stable "perf-schtest.sh -t 'stress -d 10' -n 8 -c 4 -d 4" 8`
 
-1st argument: local kernel path, must contain a bzImage and a perf executable; these will be executed in the VM
-2nd argument: command line to run the test, see 'perf-schtest' doc above
-3rd argument: vCPU count
-4th argument (optional): behavior after test. Supported:
-* shell (default): will drop into the VM shell
-* exit: will poweroff the VM and return into userspace
+* 1st argument: local kernel path, must contain a bzImage and a perf executable; these will be executed in the VM
+* 2nd argument: command line to run the test, see 'perf-schtest' doc above
+* 3rd argument: vCPU count
+* 4th argument (optional): behavior after test. Supported:
+  * shell (default): will drop into the VM shell
+  * exit: will poweroff the VM and return into userspace
 
 While the tests are ran in QEMU, the post analysis via perf script is ran in our userspace (because otherwise we'd need to ship a python runtime); this introduces some compatibility constraints between the VM and the current OS.
 
+The QEMU vCPUs will be pinned to pCPUs using the following algorithm:
+* 1st vcpu pinned to cpu0
+* 2nd vcpu pinned to sibling 1 of cpu0
+* ith vcpu with sibling i of cpu0
+* Once running out of siblings, (i+1)th vcpu pinned to cpu1
+* etc.
 
 ## Kernel config requirements
 
-In QEMU to share guest/host folder via 9p virtio: https://wiki.qemu.org/Documentation/9psetup
-Perf eBPF: CONFIG_BPF_SYSCALL=y
-Core scheduler: CONFIG_SCHED_CORE=y
-Remove verbose debug messages: CONFIG_DEBUG_STACK_USAGE=n
-/proc/pid/sched: CONFIG_SCHED_DEBUG=y
+* In QEMU to share guest/host folder via 9p virtio: https://wiki.qemu.org/Documentation/9psetup
+* Perf eBPF: CONFIG_BPF_SYSCALL=y
+* Core scheduler: CONFIG_SCHED_CORE=y
+* Remove verbose debug messages: CONFIG_DEBUG_STACK_USAGE=n
+* /proc/pid/sched: CONFIG_SCHED_DEBUG=y
