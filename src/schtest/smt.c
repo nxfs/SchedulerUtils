@@ -90,7 +90,7 @@ static int find_or_add_cpu(struct cpu_group **siblings, int cpu) {
 int fetch_cpu_topography(char *cpu_set_in, struct cpu_group **siblings) {
 	char cpu_set[CPU_SET_LENGTH];
 	strcpy(cpu_set, cpu_set_in);
-	if (cpu_set == NULL) {
+	if (cpu_set == NULL || !strlen(cpu_set)) {
 		int cpu_count = (int)sysconf(_SC_NPROCESSORS_ONLN);
 		for (int i = 0; i < cpu_count; i++)
 			if (find_or_add_cpu(siblings, i))
