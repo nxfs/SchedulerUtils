@@ -48,6 +48,8 @@ esac
 
 DIR=$(dirname ${BASH_SOURCE[0]})
 $DIR/make-initramfs.sh $INITRAMFS $SHARED_DIR $PERF
+$DIR/qemu-affine.sh $CPU_COUNT &
+QEMU_AFFINE_PID=$!
 qemu-system-x86_64 \
 	-nographic \
 	-enable-kvm \
@@ -60,6 +62,7 @@ qemu-system-x86_64 \
 	-append "console=ttyS0" \
 	-serial mon:stdio \
 	-virtfs local,path=$SHARED_DIR,mount_tag=host_share,security_model=none
+wait $QEMU_AFFINE_PID || { echo "qemu-affine.sh failed; aborting"; exit 1; }
 rm -f $INITRAMFS
 cp -a $SHARED_DIR/out/. ./
 export results_dir=results
