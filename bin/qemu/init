@@ -1,0 +1,26 @@
+#!/bin/busybox sh
+# init script in qemu
+
+echo "Running busybox initramfs..."
+
+# Mount the /proc and /sys filesystems
+/bin/busybox mount -t proc none /proc
+/bin/busybox mount -t sysfs none /sys
+/bin/busybox mount -t debugfs none /sys/kernel/debug
+/bin/busybox mount -t devtmpfs none /dev
+
+# Mount the virtual filesystem exposed from the host
+/bin/busybox mkdir -p /mnt/share
+/bin/busybox mount -t 9p -o trans=virtio host_share /mnt/share -oversion=9p2000.L
+
+# Make our lives a bit easier
+/bin/busybox ln -s /mnt/share/bin/perf-schtest-common.sh /bin/perf-schtest.sh
+/bin/busybox ln -s /mnt/share/bin/stress stress
+export PATH=$PATH:/mnt/share/bin
+export LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64
+
+echo "Running mainscript"
+/mnt/share/bin/mainscript || echo "main script failed"
+
+echo "Entering busybox shell..."
+exec /bin/busybox sh

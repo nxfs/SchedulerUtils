@@ -16,15 +16,15 @@ Test benchmark to assess the correctness and performance of the scheduler.
 
 ## tools
 
-### run.sh
+### perf-schtest.sh
 
-Entry point. run.sh is an end-to-end overlap instrumentation script.
+Entry point. An end-to-end overlap instrumentation script of schtest via perf.
 
-run.sh launches a set of processes using schtest and monitors scheduler events with perf sched.
+The script launches a set of processes using schtest and monitors scheduler events with perf sched.
 Schtest will launches processes, optionally affine them to a set of cpus and assign them cookies.
 Prior to calling schtest, run.sh will create the necessary cgroups.
 
-run.sh then executes a perf script which computes for each CPU a timeline of running cookies and checks for overlaps between siblings.
+The script then executes a perf script which computes for each CPU a timeline of running cookies and checks for overlaps between siblings.
 The summary of found overlaps is printed while a fully detailed report is dumped in a result file.
 
 All script options are passed through to `./bin/schtest`; refer to that script for available options.
@@ -52,3 +52,32 @@ Run it without arguments to learn how to use it.
 
 Single threaded tool to stress cpu using a task rate arrival model.
 Units of work are created at periodic wall clock time intervals.
+
+
+
+## qemu
+
+
+### perf-schtest-qemu.sh
+
+Equivalent functionality than perf-schtest.sh but runs in QEMU.
+
+Example:
+`./bin/perf-schtest-qemu.sh /home/ubuntu/linux-stable "perf-schtest.sh -t 'stress -d 10' -n 8 -c 4 -s '0-4' -d 4"`
+
+1st argument: local kernel path, must contain a bzImage and a perf executable; these will be executed in the VM
+2nd argument: command line to run the test, see 'perf-schtest' doc above.
+3rd argument (optional): behavior after test. Supported:
+* shell (default): will drop into the VM shell
+* exit: will poweroff the VM and return into userspace
+
+While the tests are ran in QEMU, the post analysis via perf script is ran in our userspace (because otherwise we'd need to ship a python runtime); this introduces some compatibility constraints between the VM and the current OS.
+
+
+## Kernel config requirements
+
+In QEMU to share guest/host folder via 9p virtio: https://wiki.qemu.org/Documentation/9psetup
+Perf eBPF: CONFIG_BPF_SYSCALL=y
+Core scheduler: CONFIG_SCHED_CORE=y
+Remove verbose debug messages: CONFIG_DEBUG_STACK_USAGE=n
+/proc/pid/sched: CONFIG_SCHED_DEBUG=y
