@@ -4,7 +4,8 @@ set -exo pipefail
 
 KERNEL_REPO=$1
 SCRIPT=$2
-MODE=$3
+CPU_COUNT=$3
+MODE=$4
 
 KERNEL_IMAGE=$KERNEL_REPO/arch/x86/boot/bzImage
 PERF=$KERNEL_REPO/tools/perf/perf

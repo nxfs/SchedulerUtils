@@ -63,11 +63,12 @@ Units of work are created at periodic wall clock time intervals.
 Equivalent functionality than perf-schtest.sh but runs in QEMU.
 
 Example:
-`./bin/perf-schtest-qemu.sh /home/ubuntu/linux-stable "perf-schtest.sh -t 'stress -d 10' -n 8 -c 4 -s '0-4' -d 4"`
+`./bin/perf-schtest-qemu.sh /home/ubuntu/linux-stable "perf-schtest.sh -t 'stress -d 10' -n 8 -c 4 -d 4" 8`
 
 1st argument: local kernel path, must contain a bzImage and a perf executable; these will be executed in the VM
-2nd argument: command line to run the test, see 'perf-schtest' doc above.
-3rd argument (optional): behavior after test. Supported:
+2nd argument: command line to run the test, see 'perf-schtest' doc above
+3rd argument: vCPU count
+4th argument (optional): behavior after test. Supported:
 * shell (default): will drop into the VM shell
 * exit: will poweroff the VM and return into userspace
 
