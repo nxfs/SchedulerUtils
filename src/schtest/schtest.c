@@ -143,6 +143,44 @@ static int enable_sched_schedstats() {
 
 }
 
+static void wait_for_task(int pid, int task_count, struct task_info *task_info, FILE *out_f, int *waiting_count) {
+	int status;
+	pid_t terminated_pid = waitpid(pid, &status, WNOHANG);
+	if (terminated_pid != -1) {
+		int task_idx;
+		for (task_idx = 0; task_idx < task_count; task_idx++)
+			if (task_info[task_idx].pid == terminated_pid)
+				break;
+		if (task_idx == task_count) {
+			fprintf(stderr, "Unknown child process with pid %d terminated\n", terminated_pid);
+			exit(1);
+		}
+		task_info[task_idx].running = false;
+		printf("Task %d completed, status=%d, cpu_time_s=%.3f, runq_wait_time_s=%.3f, core_forceidle_sum=%.9f\n",
+				terminated_pid,
+				status,
+				task_info[task_idx].schedstat.cpu_time / 1000000000.0,
+				task_info[task_idx].schedstat.runq_wait_time / 1000000000.0,
+				task_info[task_idx].sched.core_forceidle_sum / 1000.0);
+		if (fprintf(out_f, "%d %d %llu %lu %d %llu %llu %llu\n",
+					task_idx,
+					task_info[task_idx].pid,
+					task_info[task_idx].cookie,
+					clock_get_time_nsecs(),
+					status,
+					task_info[task_idx].schedstat.cpu_time,
+					task_info[task_idx].schedstat.runq_wait_time,
+					(unsigned long long int)(task_info[task_idx].sched.core_forceidle_sum * 1000000)) < 0) {
+			fprintf(stderr, "Could not write task info for task with pid %d, errno = %d\n", task_info[task_idx].pid, errno);
+			exit(1);
+		}
+		(*waiting_count)--;
+	} else {
+		fprintf(stderr, "Waitpid error for %d, errno = %d\n", pid, errno);
+		exit(1);
+	}
+}
+
 static void wait_for_tasks(int task_count, uint32_t duration, struct task_info *task_info, FILE *out_f) {
 	int rc;
 	int task_idx;
@@ -170,41 +208,7 @@ static void wait_for_tasks(int task_count, uint32_t duration, struct task_info *
 		rc = sigtimedwait(&mask, &info, duration > 0 || killed ? &timeout : NULL);
 		if (rc > 0) {
 			if (info.si_signo == SIGCHLD) {
-				int status;
-				pid_t terminated_pid = waitpid(info.si_pid, &status, 0);
-				if (terminated_pid != -1) {
-					for (task_idx = 0; task_idx < task_count; task_idx++)
-						if (task_info[task_idx].pid == terminated_pid)
-							break;
-					if (task_idx == task_count) {
-						fprintf(stderr, "Unknown child process with pid %d terminated\n", terminated_pid);
-						exit(1);
-					}
-					task_info[task_idx].running = false;
-					printf("Task %d completed, status=%d, cpu_time_s=%.3f, runq_wait_time_s=%.3f, core_forceidle_sum=%.9f\n",
-							terminated_pid,
-							status,
-							task_info[task_idx].schedstat.cpu_time / 1000000000.0,
-							task_info[task_idx].schedstat.runq_wait_time / 1000000000.0,
-							task_info[task_idx].sched.core_forceidle_sum / 1000.0);
-					if (fprintf(out_f, "%d %d %llu %lu %d %llu %llu %llu\n",
-								task_idx,
-								task_info[task_idx].pid,
-								task_info[task_idx].cookie,
-								clock_get_time_nsecs(),
-								status,
-								task_info[task_idx].schedstat.cpu_time,
-								task_info[task_idx].schedstat.runq_wait_time,
-								(unsigned long long int)(task_info[task_idx].sched.core_forceidle_sum * 1000000)) < 0) {
-						fprintf(stderr, "Could not write task info for task with pid %d, errno = %d\n", task_info[task_idx].pid, errno);
-						exit(1);
-					}
-					waiting_count--;
-				} else {
-					fprintf(stderr, "Waitpid error for %d, errno = %d\n", task_info[task_idx].pid, errno);
-					exit(1);
-				}
-
+				wait_for_task(info.si_pid, task_count, task_info, out_f, &waiting_count);
 			} else {
 				fprintf(stderr, "Received unexpected signal %d\n", info.si_signo);
 				exit(1);
@@ -214,8 +218,16 @@ static void wait_for_tasks(int task_count, uint32_t duration, struct task_info *
 			exit(1);
 		} else if (errno == EAGAIN) {
 			if (killed) {
-				fprintf(stderr, "Timed out while waiting for children\n");
-				exit(1);
+				fprintf(stdout, "Waiting for %d remaining last children...\n", waiting_count);
+				for (task_idx = 0; task_idx < task_count; task_idx++) {
+					if (task_info[task_idx].running) {
+						wait_for_task(task_info[task_idx].pid, task_count, task_info, out_f, &waiting_count);
+					}
+
+				}
+				if (waiting_count > 0) {
+					timeout_ns += 100000000;
+				}
 			} else {
 				fprintf(stdout, "Test duration elapsed, sending SIGINT to remaining children...\n");
 				for (task_idx = 0; task_idx < task_count; task_idx++) {
@@ -227,7 +239,7 @@ static void wait_for_tasks(int task_count, uint32_t duration, struct task_info *
 					}
 				}
 				killed = true;
-				timeout_ns += 5000000000;
+				timeout_ns += 100000000;
 			}
 		} else {
 			fprintf(stderr, "Error %d while waiting for children\n", errno);
