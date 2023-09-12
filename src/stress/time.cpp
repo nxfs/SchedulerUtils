@@ -25,7 +25,7 @@ uint64_t clock_get_cpu_time_nsecs() {
 	return clock_get_time_nsecs(CLOCK_PROCESS_CPUTIME_ID);
 }
 
-void sleep_nsecs(uint64_t nsecs) {
+int sleep_nsecs(uint64_t nsecs) {
        struct timespec t, trem;
 
 	t.tv_sec = nsecs / 1000000000;
@@ -36,10 +36,12 @@ void sleep_nsecs(uint64_t nsecs) {
 	if (rc) {
 		if (errno == EINTR) {
 			fprintf(stderr, "WARNING: nanosleep was interrupted\n");
+			return -EINTR;
 		} else {
 			fprintf(stderr, "FATAL: nanosleep returned %d, errno %d\n\n", rc, errno);
 			exit(1);
 		}
 	}
+	return 0;
 }
 

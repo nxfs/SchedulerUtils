@@ -75,7 +75,7 @@ struct stress_result stress(const struct stress_cfg &stress_cfg, bool &interrupt
 		} else {
 			uint64_t sleep_time_nsecs = next_task_arrival_nsecs - now_nsecs;
 			total_sleep_time_nsecs += sleep_time_nsecs;
-			sleep_nsecs(sleep_time_nsecs);
+			interrupted |= sleep_nsecs(sleep_time_nsecs) == -EINTR;
 		}
 	} while(!interrupted && next_task_arrival_nsecs < end_time_nsecs);
 
