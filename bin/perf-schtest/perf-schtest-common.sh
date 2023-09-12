@@ -2,6 +2,8 @@
 # Creates cgroups and runs schtest via perf
 # Common logic invoked both on metal (../perf-schtest.sh) or within the guest (../qemu/perf-schtest.sh)
 
+set -euxo pipefail
+
 is_mounted() {
 	cd "$1"
 	path=$(pwd)
