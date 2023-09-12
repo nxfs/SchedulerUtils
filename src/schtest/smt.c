@@ -30,26 +30,42 @@ static struct cpu_group* create_and_populate_cpu_group(struct cpu_group *prev_gr
 	fclose(f);
 
 	struct cpu_node *prev_node = NULL, *curr_node = NULL;
-	char *cpus_p = cpus;
+	char *cpus_dup = strdup(cpus);
+	char *cpus_p = cpus_dup;
 	char *ptr_comma;
+	int cpu_range_start = -1, cpu_range_end, curr_cpu;
 	while(1) {
-		char *cpu = strtok_r(cpus_p, ",", &ptr_comma);
+		char *cpu = strtok_r(cpus_p, ",-", &ptr_comma);
 		cpus_p = NULL;
 		if (cpu == NULL)
 			break;
 
-		curr_node = (struct cpu_node*)malloc(sizeof(*(g->cpu_list)));
-		if (prev_node) {
-			prev_node->next = curr_node;
-		}
-		else {
-			g->cpu_list = curr_node;
-		}
+		int offset = cpu - cpus_dup + strlen(cpu);
+		char delim = cpus[offset];
+		cpu_range_end = atoi(cpu);
 
-		curr_node->next = NULL;
-		curr_node->cpu = atoi(cpu);
-		prev_node = curr_node;
+		if (delim == '-') {
+			cpu_range_start = cpu_range_end;
+		} else {
+			if (cpu_range_start == -1) {
+				cpu_range_start = cpu_range_end;
+			}
+			for (curr_cpu = cpu_range_start; curr_cpu <= cpu_range_end; curr_cpu++) {
+				curr_node = (struct cpu_node*)malloc(sizeof(*(g->cpu_list)));
+				if (prev_node) {
+					prev_node->next = curr_node;
+				}
+				else {
+					g->cpu_list = curr_node;
+				}
+				curr_node->next = NULL;
+				curr_node->cpu = curr_cpu;
+				prev_node = curr_node;
+			}
+			cpu_range_start = -1;
+		}
 	}
+	free(cpus_dup);
 
 	return g;
 }
