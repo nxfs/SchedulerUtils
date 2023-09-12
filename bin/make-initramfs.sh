@@ -42,6 +42,7 @@ install_exec mkdir ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec mount ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec rm ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec dirname ${SHARED_DIR} ${INITRAMFS_DIR}
+install_exec awk ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec $PERF ${SHARED_DIR} ${INITRAMFS_DIR}
 
 # Copy busybox into the right place.
