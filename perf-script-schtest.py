@@ -22,6 +22,7 @@ sys.path.append(os.environ['PERF_EXEC_PATH'] + \
 from perf_trace_context import *
 from Core import *
 
+
 class Task:
     def __init__(self, id, pid, cookie, stop_ns, exit_code, cpu_time, runq_wait_time, forceidle_time):
         self.id = id
@@ -32,6 +33,7 @@ class Task:
         self.cpu_time = cpu_time
         self.runq_wait_time = runq_wait_time
         self.forceidle_time = forceidle_time
+
 
 class SchtestConfig:
     def __init__(self, tasks, cpu_set, cpu_count, cpu_groups, start_ns, stop_ns):
@@ -44,6 +46,15 @@ class SchtestConfig:
         self.pid_to_cookie = {}
         for t in tasks:
             self.pid_to_cookie[t.pid] = t.cookie
+        self.cpu_to_group = {}
+        self.number_of_cpu_siblings = None
+        for idx, g in enumerate(self.cpu_groups):
+            if self.number_of_cpu_siblings is None:
+                self.number_of_cpu_siblings = len(g)
+            else:
+                assert(self.number_of_cpu_siblings == len(g))
+            for c in g:
+                self.cpu_to_group[c] = idx
 
 def parse_cpu_set(cpu_set):
     if len(cpu_set) == 0:
@@ -60,6 +71,7 @@ def parse_cpu_set(cpu_set):
             for c in range(int(sub_tok[0]), int(sub_tok[1]) + 1):
                 cpus.add(int(c))
     cpus
+
 
 def parse_schtest_out():
     path = f"{results_dir}/out.txt"
@@ -97,6 +109,7 @@ def parse_schtest_out():
     print(f"start ns: {start_ns}; stop ns: {stop_ns}")
     return SchtestConfig(tasks=tasks, cpu_set=cpu_set, cpu_count=cpu_count, cpu_groups=cpu_groups, start_ns=start_ns, stop_ns=stop_ns)
 
+
 class Event:
     def __init__(self, event_name, cpu, pid, time, comm):
         self.event_name = event_name
@@ -105,11 +118,15 @@ class Event:
         self.time = time
         self.comm = comm
 
+
 class RuntimeEvent:
-    def __init__(self, start, stop, cookie):
+    def __init__(self, start, stop, cookie, pid, cpu):
         self.start = start
         self.stop = stop
         self.cookie = cookie
+        self.pid = pid
+        self.cpu = cpu
+
 
 class CpuTimeline:
     def __init__(self):
@@ -118,11 +135,21 @@ class CpuTimeline:
     def add_runtime_event(self, run_event):
         self.runtime_events.append(run_event)
 
+
+class TaskTimeline:
+    def __init__(self):
+        self.runtime_events = []
+
+    def add_runtime_event(self, run_event):
+        self.runtime_events.append(run_event)
+
+
 class Timeline:
     def __init__(self, cfg):
         self.cfg = cfg
         self.events = []
         self.cpu_timeline = defaultdict(CpuTimeline)
+        self.task_timeline = defaultdict(TaskTimeline)
 
     def add_event(self, event):
         self.events.append(event)
@@ -131,17 +158,20 @@ class Timeline:
         start = event.time - runtime
         stop = event.time
         cookie = self.cfg.pid_to_cookie.get(event.pid, None)
-        runtime_event = RuntimeEvent(start, stop, cookie)
+        runtime_event = RuntimeEvent(start=start, stop=stop, cookie=cookie, pid=event.pid, cpu=event.cpu)
         self.cpu_timeline[event.cpu].add_runtime_event(runtime_event)
+        self.task_timeline[event.pid].add_runtime_event(runtime_event)
 
+    # an overlap is defined by a period of time where two process are sharing an hyperthread with incompatible cookies
+    # in other words it's a violation of core scheduling invariants
     def check_overlaps(self):
-        overlap_file_path = f"{results_dir}/overlap_file.txt"
+        overlap_file_path = f"{results_dir}/overlap.txt"
         overlap_file = open(overlap_file_path, 'w')
-        print(f"Checking overlaps, full results will be written at {overlap_file_path}")
+        print(f"\nChecking overlaps, full results will be written at {overlap_file_path}")
         overlap_buckets = defaultdict(lambda: 0)
+        longest_overlap = 0
         self.cpu_timeline = dict(self.cpu_timeline)
         checked_cpus = set()
-        longest_overlap = 0
         for cpu, cpu_timeline in self.cpu_timeline.items():
             if cpu in checked_cpus:
                 continue
@@ -214,6 +244,7 @@ class Timeline:
                                 print(f"Overlap of {overlap} between CPU {c} with cookie {cpu_cookie[c]} scheduled in at {cpu_cookie_time[c]} and CPU {next_cpu} with cookie {cpu_cookie[next_cpu]} scheduled out at {next_time}", file=overlap_file)
                             if overlap > longest_overlap:
                                 longest_overlap = overlap
+
                 # update state
                 cpu_cookie[next_cpu] = next_cookie
                 cpu_cookie_time[next_cpu] = next_time
@@ -234,6 +265,96 @@ class Timeline:
 
         overlap_file.close()
 
+    # spread is defined when multiple processes sharing the same cookie are spreading across multiple core when they could actually run on hyperthread siblings
+    # spread should be prevented by core affinity
+    def check_spread(self):
+        spread_file_path = f"{results_dir}/spread.txt"
+        spread_file = open(spread_file_path, 'w')
+        print(f"\nChecking spread, full results will be written at {spread_file_path}")
+        task_accumulated_spread=defaultdict(lambda: 0)
+        self.task_timeline = dict(self.task_timeline)
+        task_groups = defaultdict(list)
+        for task in self.cfg.tasks:
+            if task.cookie:
+                task_groups[task.cookie].append(task)
+
+        for cookie, task_group in task_groups.items():
+            task_event_iterators = {}
+            task_cpu = {}
+            task_cpu_time = {}
+            for t in task_group:
+                if len(self.task_timeline[t.pid].runtime_events) > 0:
+                    task_event_iterators[t.pid] = 0
+                    task_cpu[t.pid] = None
+                    task_cpu_time[t.pid] = None
+
+            check_spread = False
+            running_count = 0
+            while(len(task_event_iterators.keys()) > 1):
+                # find next event (start/stop running) across all tasks in group
+                next_task = None
+                next_time = None
+                next_cpu = None
+                for t in task_event_iterators.keys():
+                    rte = self.task_timeline[t].runtime_events[task_event_iterators[t]]
+                    if task_cpu[t] is None:
+                        # schedule in
+                        next_task_time = rte.start
+                        next_task_cpu = rte.cpu
+                    else:
+                        # schedule out
+                        next_task_time = rte.stop
+                        next_task_cpu = None
+                    if (next_time is None) or (next_task_time < next_time):
+                        next_task = t
+                        next_time = next_task_time
+                        next_cpu = next_task_cpu
+
+                if next_time > cfg.stop_ns:
+                    break
+
+                check_spread |= next_time > cfg.start_ns
+
+                # advance event iterator
+                if next_cpu is None:
+                    task_event_iterators[next_task] += 1
+                    if task_event_iterators[next_task] >= len(self.task_timeline[next_task].runtime_events):
+                        del task_event_iterators[next_task]
+
+                # on schedule out check for spread, ignoring early ones before cookies are setup properly
+                if next_cpu is None and running_count > 1 and check_spread:
+                    cpu_groups = set()
+                    max_time = None
+                    for t in task_event_iterators.keys():
+                        if task_cpu[t] is not None:
+                            cpu_groups.add(self.cfg.cpu_to_group[task_cpu[t]])
+                            if t != next_task and ((max_time is None) or (max_time < task_cpu_time[t])):
+                                max_time = task_cpu_time[t]
+                    min_number_of_groups = int(math.ceil(running_count / self.cfg.number_of_cpu_siblings))
+                    if len(cpu_groups) > min_number_of_groups:
+                        spread = next_time - max_time
+                        assert(spread > 0)
+                        task_accumulated_spread[next_task] += spread
+                        print(f"Spread of {spread} of task {t} between {max_time} and {next_time}", file=spread_file)
+
+                # update state
+                if next_cpu is None:
+                    running_count -= 1
+                else:
+                    running_count += 1
+                task_cpu[next_task] = next_cpu
+                task_cpu_time[next_task] = next_time
+
+        if len(task_accumulated_spread) > 0:
+            sorted_tas = sorted(task_accumulated_spread.items(), key=lambda x: -x[1])
+            nano_to_seconds = 1000000000
+            for t, s in sorted_tas:
+                print(f"Task {t:6d} spread: {s/nano_to_seconds:.3f} s")
+        else:
+            print("No spread was found!")
+
+        spread_file.close()
+
 
     def compute_bogops_count(self):
         file_pattern = 'fork_*.txt'
@@ -251,6 +372,7 @@ class Timeline:
                 total_bogops_count += bogops_count
             else:
                 print(f"Could not find bogops count in {filename}, defaulting to zero")
+        print(f"\nPerformance statistics")
         print(f"Total bogops count: {total_bogops_count}")
         avg_bogops_count = total_bogops_count / len(matching_files)
         print(f"Average bogops count: {avg_bogops_count:.0f}")
@@ -289,6 +411,7 @@ def trace_begin():
 
 def trace_end():
     timeline.check_overlaps()
+    timeline.check_spread()
     timeline.compute_bogops_count()
 
 
