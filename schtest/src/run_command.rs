@@ -2,7 +2,7 @@ use std::process::{Child, Command};
 
 use crate::cgroup;
 
-pub fn run_command(tasks: Vec<String>, cgroup: String) {
+pub fn run_command(tasks: Vec<String>, cgroup: String, cpuset: String) {
     let maybe_cgroup = cgroup::create_cgroup(&cgroup);
     let mut _handles: Vec<Child> = vec![];
     for task in tasks {
@@ -14,7 +14,10 @@ pub fn run_command(tasks: Vec<String>, cgroup: String) {
         }
         let handle = cmd.spawn().unwrap();
         if let Some(ref cgroup) = maybe_cgroup {
-            cgroup::add_task_to_cgroup(&cgroup, handle.id() as u64);
+            cgroup::add_task_to_cgroup_by_tgid(&cgroup, handle.id() as u64);
+            if !cpuset.is_empty() {
+                cgroup::set_cpu_affinity(&cgroup, &cpuset);
+            }
         }
         _handles.push(handle);
         let out = cmd.output().expect("failed to execute task");

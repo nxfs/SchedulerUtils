@@ -13,9 +13,15 @@ struct Args {
 
     #[arg(short = 'g', long = "cgroup", default_value = "")]
     pub cgroup: String,
+
+    #[arg(short = 's', long = "cpuset", default_value = "")]
+    pub cpuset: String,
 }
 
 fn main() {
     let cli = Args::parse();
-    run_command(cli.tasks, cli.cgroup);
+    if cli.cgroup.is_empty() && !cli.cpuset.is_empty() {
+        panic!("cannot specify cpuset without cgroups");
+    }
+    run_command(cli.tasks, cli.cgroup, cli.cpuset);
 }
