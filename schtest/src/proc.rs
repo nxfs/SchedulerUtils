@@ -1,6 +1,7 @@
 use procfs::process::Process;
 use std::{
-    fs, thread, time::{Duration, Instant}
+    fs, thread,
+    time::{Duration, Instant},
 };
 
 pub fn get_all_children_processes_ids(pid: i32) -> Vec<i32> {
@@ -53,7 +54,11 @@ pub fn wait_for_threads(pid: i32, expected_thread_count: usize, timeout: Duratio
             return pids;
         }
         if Instant::now().duration_since(start_time) > timeout {
-            panic!("timeout waiting for threads, only {} found, expected {}", pids.len(), expected_thread_count);
+            panic!(
+                "timeout waiting for threads, only {} found, expected {}",
+                pids.len(),
+                expected_thread_count
+            );
         }
         thread::sleep(Duration::from_millis(100));
     }

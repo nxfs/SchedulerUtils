@@ -1,4 +1,8 @@
-use std::{process::{Child, Command}, time::Duration};
+use std::{
+    process::{Child, Command},
+    time::Duration,
+};
+use wait_timeout::ChildExt;
 
 use crate::{cgroup, proc::wait_for_threads};
 
@@ -6,6 +10,7 @@ pub struct RunCommandCfg {
     pub task: String,
     pub threads: usize,
     pub thread_wait: Duration,
+    pub timeout: Duration,
     pub cgroup: String,
     pub cpuset: String,
     pub weight: u64,
@@ -32,8 +37,14 @@ pub fn run_command(cfg: RunCommandCfg) {
     wait_for_threads(handle.id() as i32, cfg.threads, cfg.thread_wait);
     handles.push(handle);
     println!("waiting for all threads to join");
-    while let Some(handle) = handles.pop() {
+    while let Some(mut handle) = handles.pop() {
         let id = handle.id();
+        if !cfg.timeout.is_zero() {
+            if handle.wait_timeout(cfg.timeout).unwrap().is_none() {
+                println!("timed out waiting for all threads to join, sending kill signal");
+                handle.kill().unwrap();
+            }
+        }
         let out = handle.wait_with_output().unwrap();
         println!(
             "task {}: out='{}', err='{}'",

@@ -19,6 +19,9 @@ struct Args {
     #[arg(short = 'W', long = "threads-wait-secs", default_value = "1")]
     pub threads_wait_secs: u64,
 
+    #[arg(short = 'T', long = "timeout-secs", default_value = "0")]
+    pub timeout_secs: u64,
+
     #[arg(short = 'g', long = "cgroup", default_value = "")]
     pub cgroup: String,
 
@@ -35,6 +38,7 @@ impl From<Args> for RunCommandCfg {
             task: args.task,
             threads: args.threads,
             thread_wait: Duration::from_secs(args.threads_wait_secs),
+            timeout: Duration::from_secs(args.timeout_secs),
             cgroup: args.cgroup,
             cpuset: args.cpuset,
             weight: args.weight,
