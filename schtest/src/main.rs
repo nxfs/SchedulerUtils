@@ -1,4 +1,5 @@
 mod cgroup;
+mod prctl;
 mod proc;
 mod run_command;
 
@@ -10,26 +11,50 @@ use run_command::{run_command, RunCommandCfg};
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
+    /// task to run
     #[arg(short = 't', long = "task", default_value = "sleep 10")]
     pub task: String,
 
-    #[arg(short = 'n', long = "threads-count", default_value = "0")]
+    /// number of threads that the task to run will spawn, excluding the task group leader
+    /// the program execution will block until all threads are detected
+    /// note that if the task spawns other processes, these will also be accounted for, recursively
+    #[arg(
+        short = 'n',
+        long = "threads-count",
+        default_value = "0",
+        verbatim_doc_comment
+    )]
     pub threads: usize,
 
+    /// the maximum wait time for the task to spawn all its threads
     #[arg(short = 'W', long = "threads-wait-secs", default_value = "1")]
     pub threads_wait_secs: u64,
 
+    /// the maximum duration of the test, after which the task will be killed
     #[arg(short = 'T', long = "timeout-secs", default_value = "0")]
     pub timeout_secs: u64,
 
+    /// the cgroup name into which the task and its threads will be put
     #[arg(short = 'g', long = "cgroup", default_value = "")]
     pub cgroup: String,
 
+    /// the cpu affinity of the cgroup
     #[arg(short = 's', long = "cpuset", default_value = "")]
     pub cpuset: String,
 
+    /// the cpu weight of the cgroup
     #[arg(short = 'w', long = "weight", default_value = "100")]
     pub weight: u64,
+
+    /// the number of core cookies generated
+    /// if non-zero, the core cookies are assigned to the task and its threads, round robin
+    #[arg(
+        short = 'c',
+        long = "cookie-count",
+        default_value = "0",
+        verbatim_doc_comment
+    )]
+    pub cookie_count: u64,
 }
 
 impl From<Args> for RunCommandCfg {
@@ -42,6 +67,7 @@ impl From<Args> for RunCommandCfg {
             cgroup: args.cgroup,
             cpuset: args.cpuset,
             weight: args.weight,
+            cookie_count: args.cookie_count,
         }
     }
 }

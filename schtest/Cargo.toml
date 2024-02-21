@@ -8,5 +8,7 @@ edition = "2021"
 [dependencies]
 cgroups-rs = "0.3.4"
 clap = { version = "4.5.0", features = ["derive"] }
+nix = "0.27.1"
+palaver = "0.2.8"
 procfs = "0.16.0"
 wait-timeout = "0.2.0"
