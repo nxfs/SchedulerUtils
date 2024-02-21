@@ -1,3 +1,4 @@
+use cgroups_rs::cpu::CpuController;
 use cgroups_rs::cpuset::CpuSetController;
 use cgroups_rs::{Cgroup, CgroupPid, Controller};
 
@@ -31,4 +32,9 @@ pub fn add_task_to_cgroup_by_tgid(cgroup: &Cgroup, tgid: u64) {
 pub fn set_cpu_affinity(cgroup: &Cgroup, cpus: &str) {
     let cpuset: &CpuSetController = cgroup.controller_of().unwrap();
     cpuset.set_cpus(cpus).expect("unable to set cpus");
+}
+
+pub fn set_weight(cgroup: &Cgroup, weight: u64) {
+    let cpu: &CpuController = cgroup.controller_of().unwrap();
+    cpu.set_shares(weight).expect("unable to set weight");
 }

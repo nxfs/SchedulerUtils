@@ -8,6 +8,7 @@ pub struct RunCommandCfg {
     pub thread_wait: Duration,
     pub cgroup: String,
     pub cpuset: String,
+    pub weight: u64,
 }
 
 pub fn run_command(cfg: RunCommandCfg) {
@@ -23,6 +24,7 @@ pub fn run_command(cfg: RunCommandCfg) {
     println!("task \"{}\" has pid {}", cfg.task, handle.id());
     if let Some(ref cgroup) = maybe_cgroup {
         cgroup::add_task_to_cgroup_by_tgid(&cgroup, handle.id() as u64);
+        cgroup::set_weight(&cgroup, cfg.weight);
         if !cfg.cpuset.is_empty() {
             cgroup::set_cpu_affinity(&cgroup, &cfg.cpuset);
         }
