@@ -39,6 +39,7 @@ pub fn get_thread_ids(pid: i32) -> Vec<i32> {
 }
 
 pub fn wait_for_threads(pid: i32, expected_thread_count: usize, timeout: Duration) -> Vec<i32> {
+    println!("waiting for all threads to appear");
     if pid == 0 {
         return vec![];
     }
@@ -51,6 +52,7 @@ pub fn wait_for_threads(pid: i32, expected_thread_count: usize, timeout: Duratio
         }
         // tgid is excluded, so we need one more thread
         if pids.len() > expected_thread_count {
+            println!("detected all threads, pids={:?}", pids);
             return pids;
         }
         if Instant::now().duration_since(start_time) > timeout {

@@ -18,8 +18,19 @@ pub fn create_cgroup(name: &str) -> Option<Cgroup> {
     }
 }
 
+pub fn add_task_to_cgroup_by_pid(cgroup: &Cgroup, pid: u64) {
+    println!("adding pid {} to cgroup", pid);
+    let cpus: &cgroups_rs::cpu::CpuController = cgroup.controller_of().unwrap();
+    cpus.add_task(&CgroupPid::from(pid))
+        .expect("error adding pid to cpu cgroup");
+    let cpuset: &CpuSetController = cgroup.controller_of().unwrap();
+    cpuset
+        .add_task(&CgroupPid::from(pid))
+        .expect("error adding pid to cpuset cgroup");
+}
+
 pub fn add_task_to_cgroup_by_tgid(cgroup: &Cgroup, tgid: u64) {
-    println!("adding {} to cgroup", tgid);
+    println!("adding tgid {} to cgroup", tgid);
     let cpus: &cgroups_rs::cpu::CpuController = cgroup.controller_of().unwrap();
     cpus.add_task_by_tgid(&CgroupPid::from(tgid))
         .expect("error adding pid to cpu cgroup");
@@ -30,11 +41,13 @@ pub fn add_task_to_cgroup_by_tgid(cgroup: &Cgroup, tgid: u64) {
 }
 
 pub fn set_cpu_affinity(cgroup: &Cgroup, cpus: &str) {
+    println!("setting cgroup {} affinity to {}", cgroup.path(), cpus);
     let cpuset: &CpuSetController = cgroup.controller_of().unwrap();
     cpuset.set_cpus(cpus).expect("unable to set cpus");
 }
 
 pub fn set_weight(cgroup: &Cgroup, weight: u64) {
+    println!("setting cgroup {} weight to {}", cgroup.path(), weight);
     let cpu: &CpuController = cgroup.controller_of().unwrap();
     cpu.set_shares(weight).expect("unable to set weight");
 }

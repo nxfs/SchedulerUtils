@@ -4,11 +4,7 @@ use std::{
 };
 use wait_timeout::ChildExt;
 
-use crate::{
-    cgroup,
-    prctl,
-    proc::wait_for_threads,
-};
+use crate::{cgroup, prctl, proc::wait_for_threads};
 
 pub struct RunCommandCfg {
     pub task: String,
@@ -32,14 +28,17 @@ pub fn run_command(cfg: RunCommandCfg) {
     }
     let handle = cmd.spawn().unwrap();
     println!("task \"{}\" has pid {}", cfg.task, handle.id());
+    let thread_ids = wait_for_threads(handle.id() as i32, cfg.threads, cfg.thread_wait);
     if let Some(ref cgroup) = maybe_cgroup {
         cgroup::add_task_to_cgroup_by_tgid(&cgroup, handle.id() as u64);
+        for thread_id in thread_ids.iter() {
+            cgroup::add_task_to_cgroup_by_pid(&cgroup, *thread_id as u64);
+        }
         cgroup::set_weight(&cgroup, cfg.weight);
         if !cfg.cpuset.is_empty() {
             cgroup::set_cpu_affinity(&cgroup, &cfg.cpuset);
         }
     }
-    let thread_ids = wait_for_threads(handle.id() as i32, cfg.threads, cfg.thread_wait);
     create_cookies(cfg.cookie_count, thread_ids);
     handles.push(handle);
     println!("waiting for all threads to join");
@@ -78,6 +77,10 @@ pub fn create_cookies(cookie_count: u64, thread_ids: Vec<i32>) {
     prctl::create_cookies(pid_grps);
 
     for thread_id in thread_ids {
-        println!("cookie for {} is {}", thread_id, prctl::get_cookie(thread_id));
+        println!(
+            "cookie for {} is {}",
+            thread_id,
+            prctl::get_cookie(thread_id)
+        );
     }
 }
