@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use cgroups_rs::cpu::CpuController;
 use cgroups_rs::cpuset::CpuSetController;
 use cgroups_rs::{Cgroup, CgroupPid, Controller};
@@ -18,26 +19,31 @@ pub fn create_cgroup(name: &str) -> Option<Cgroup> {
     }
 }
 
-pub fn add_task_to_cgroup_by_pid(cgroup: &Cgroup, pid: u64) {
-    println!("adding pid {} to cgroup", pid);
+fn add_task_to_cgroup_by_pid(cgroup: &Cgroup, pid: u64) -> Result<()> {
     let cpus: &cgroups_rs::cpu::CpuController = cgroup.controller_of().unwrap();
     cpus.add_task(&CgroupPid::from(pid))
-        .expect("error adding pid to cpu cgroup");
+        .context("could not add pid to cpus cgroup")?;
     let cpuset: &CpuSetController = cgroup.controller_of().unwrap();
     cpuset
         .add_task(&CgroupPid::from(pid))
-        .expect("error adding pid to cpuset cgroup");
+        .context("cound not add pid to cpuset cgroup")
 }
 
-pub fn add_task_to_cgroup_by_tgid(cgroup: &Cgroup, tgid: u64) {
-    println!("adding tgid {} to cgroup", tgid);
+fn add_task_to_cgroup_by_tgid(cgroup: &Cgroup, tgid: u64) -> Result<()> {
     let cpus: &cgroups_rs::cpu::CpuController = cgroup.controller_of().unwrap();
     cpus.add_task_by_tgid(&CgroupPid::from(tgid))
-        .expect("error adding pid to cpu cgroup");
+        .context("cound not add tgid to cpus cgroup")?;
     let cpuset: &CpuSetController = cgroup.controller_of().unwrap();
     cpuset
         .add_task_by_tgid(&CgroupPid::from(tgid))
-        .expect("error adding pid to cpuset cgroup");
+        .context("cound not add tgid to cpuset cgroup")
+}
+
+pub fn add_task_to_cgroup(cgroup: &Cgroup, pid: u64) {
+    println!("adding {} to cgroup {}", pid, cgroup.path());
+    if add_task_to_cgroup_by_tgid(&cgroup, pid).is_err() {
+        add_task_to_cgroup_by_pid(cgroup, pid).expect("error adding task to cgroup");
+    }
 }
 
 pub fn set_cpu_affinity(cgroup: &Cgroup, cpus: &str) {
