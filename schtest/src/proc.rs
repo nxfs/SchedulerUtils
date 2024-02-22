@@ -38,8 +38,9 @@ pub fn get_thread_ids(pid: i32) -> Vec<i32> {
     thread_ids
 }
 
+// about the +1 logic: tgid is excluded, so we need one more thread
 pub fn wait_for_threads(pid: i32, expected_thread_count: usize, timeout: Duration) -> Vec<i32> {
-    println!("waiting for all threads to appear");
+    println!("waiting for {}+1 threads to appear", expected_thread_count);
     if pid == 0 {
         return vec![];
     }
@@ -50,14 +51,13 @@ pub fn wait_for_threads(pid: i32, expected_thread_count: usize, timeout: Duratio
         for child_pid in child_pids {
             pids.append(&mut get_thread_ids(child_pid));
         }
-        // tgid is excluded, so we need one more thread
         if pids.len() > expected_thread_count {
             println!("detected all threads, pids={:?}", pids);
             return pids;
         }
         if Instant::now().duration_since(start_time) > timeout {
             panic!(
-                "timeout waiting for threads, only {} found, expected {}",
+                "timeout waiting for threads, only {} found, expected {}+1",
                 pids.len(),
                 expected_thread_count
             );
