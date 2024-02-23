@@ -12,6 +12,11 @@ RUN apt-get install -y libncurses-dev gawk flex bison openssl libssl-dev dkms li
 
 # install perf building tools
 RUN apt-get install -y libzstd1 libdwarf-dev libdw-dev binutils-dev libcap-dev libelf-dev libnuma-dev python3 python3-dev python-setuptools libssl-dev libunwind-dev libdwarf-dev zlib1g-dev liblzma-dev libaio-dev libtraceevent-dev debuginfod libpfm4-dev libslang2-dev systemtap-sdt-dev libperl-dev binutils-dev libbabeltrace-dev libiberty-dev libzstd-dev clang python3-setuptools default-jdk
+RUN git clone --depth=1 https://github.com/rostedt/libtraceevent
+WORKDIR /libtraceevent
+RUN make && make install
+WORKDIR /
+
 
 # install qemu
 RUN apt-get install -y qemu-system

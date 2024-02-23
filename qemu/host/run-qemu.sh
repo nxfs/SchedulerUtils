@@ -28,11 +28,13 @@ rm -f $INITRAMFS
 USER_SCRIPT=$SHARED_DIR/bin/userscript
 rm -rf $USER_SCRIPT
 echo "#!bin/bash" >> $USER_SCRIPT
-SCRIPT_NAME="${SCRIPT%% -*}"
+SCRIPT_NAME="${SCRIPT%% *}"
 SCRIPT_CMD=$(basename $SCRIPT_NAME)
-if [[ $SCRIPT =~ "^[^ ]*" ]]; then
+PATTERN="[[:space:]]+"
+if [[ "$SCRIPT" =~ $PATTERN ]]; then
 	SCRIPT_ARGS=$(echo "$SCRIPT" | sed 's/^[^ ]* //')
 else
+	echo "no args"
 	SCRIPT_ARGS=""
 fi
 echo "$SCRIPT_CMD $SCRIPT_ARGS" >> $USER_SCRIPT
