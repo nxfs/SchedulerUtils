@@ -30,7 +30,11 @@ rm -rf $USER_SCRIPT
 echo "#!bin/bash" >> $USER_SCRIPT
 SCRIPT_NAME="${SCRIPT%% -*}"
 SCRIPT_CMD=$(basename $SCRIPT_NAME)
-SCRIPT_ARGS=$(echo "$SCRIPT" | sed 's/^[^ ]* //')
+if [[ $SCRIPT =~ "^[^ ]*" ]]; then
+	SCRIPT_ARGS=$(echo "$SCRIPT" | sed 's/^[^ ]* //')
+else
+	SCRIPT_ARGS=""
+fi
 echo "$SCRIPT_CMD $SCRIPT_ARGS" >> $USER_SCRIPT
 chmod u+x $USER_SCRIPT
 
@@ -58,8 +62,8 @@ esac
 
 DIR=$(dirname ${BASH_SOURCE[0]})
 $DIR/make-initramfs.sh $INITRAMFS $SHARED_DIR $PERF
-$DIR/affine-qemu.sh $CPU_COUNT > /dev/null 2>&1 &
-QEMU_AFFINE_PID=$!
+# $DIR/affine-qemu.sh $CPU_COUNT > /dev/null 2>&1 &
+# QEMU_AFFINE_PID=$!
 qemu-system-x86_64 \
         -nographic \
         -enable-kvm \
@@ -72,6 +76,6 @@ qemu-system-x86_64 \
         -append "console=ttyS0" \
         -serial mon:stdio \
         -virtfs local,path=$SHARED_DIR,mount_tag=host_share,security_model=none
-wait $QEMU_AFFINE_PID || { echo "qemu-affine.sh failed; aborting"; exit 1; }
+# wait $QEMU_AFFINE_PID || { echo "qemu-affine.sh failed; aborting"; exit 1; }
 rm -f $INITRAMFS
 cp -a $SHARED_DIR/out/. ./

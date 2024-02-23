@@ -1,26 +1,43 @@
-# First lets build schtest
-# LABEL schtest
-FROM rust:slim AS rust
-
-RUN mkdir /schtest
-COPY schtest /schtest
-
-RUN cd /schtest && cargo build --release
-
-# Second, set up the qemu host
-FROM debian:stable
+FROM ubuntu:latest AS linuxbuilder
 
 RUN apt-get update
-RUN apt-get install -y qemu-system 
+
+#fetch linux from git if not provided by a volume
+RUN apt-get install -y git
+RUN git clone --depth=1 https://github.com/torvalds/linux
+
+# install linux building tools
+RUN apt-get install -y apt-utils
+RUN apt-get install -y libncurses-dev gawk flex bison openssl libssl-dev dkms libelf-dev libudev-dev libpci-dev libiberty-dev autoconf llvm bc pkg-config
+
+# install perf building tools
+RUN apt-get install -y libzstd1 libdwarf-dev libdw-dev binutils-dev libcap-dev libelf-dev libnuma-dev python3 python3-dev python-setuptools libssl-dev libunwind-dev libdwarf-dev zlib1g-dev liblzma-dev libaio-dev libtraceevent-dev debuginfod libpfm4-dev libslang2-dev systemtap-sdt-dev libperl-dev binutils-dev libbabeltrace-dev libiberty-dev libzstd-dev clang python3-setuptools default-jdk
+
+# install qemu
+RUN apt-get install -y qemu-system
 RUN apt-get install -y busybox stress cpio
-# RUN apt-get install -y linux-perf
 
+# build statically configured busybox
+RUN git clone --depth 1 https://github.com/mirror/busybox
+WORKDIR /busybox
+RUN make defconfig
+RUN make clean && make LDFLAGS=-static -j $(nproc)
+RUN mv busybox $(which busybox)
+WORKDIR /
+
+# install rust build tools
+RUN apt-get install -y curl
+RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# copy schtest in container
 RUN mkdir /schtest
+COPY . /schtest
 
-COPY --from=rust /schtest/target/release/schtest /schtest/schtest
-COPY qemu /schtest/.
+# initial build
+WORKDIR /schtest/docker
+RUN ./build.sh && echo "built"
+WORKDIR /
 
-
-
-
-# ENTRYPOINT 
+# utils
+RUN apt-get install neovim -y

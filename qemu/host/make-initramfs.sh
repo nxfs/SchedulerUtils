@@ -41,11 +41,17 @@ install_exec mount ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec rm ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec dirname ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec awk ${SHARED_DIR} ${INITRAMFS_DIR}
+install_exec mv ${SHARED_DIR} ${INITRAMFS_DIR}
+install_exec poweroff ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec sleep ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec stress ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec $PERF ${SHARED_DIR} ${INITRAMFS_DIR}
 
 # Copy busybox into the right place.
+if ldd ${BUSYBOX} &> /dev/null; then
+    echo "busybox must be statically compiled"
+    exit 1
+fi
 cp -a ${BUSYBOX} ${INITRAMFS_DIR}/bin/busybox
 
 # Create the init script
