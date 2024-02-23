@@ -45,8 +45,42 @@ Runs qemu with:
 
 #### working with schtest
 
-For convenience a `run-schtest.sh` script is included.
-That script executes `schtest` in the VM with perf monitoring and all cli arguments propagated.
-More complex use cases (for example launching multiple instances of schtest) require using custom scripts.
+For convenience a `run-payload.sh` script is included.
+That script executes a given payload in the VM with perf monitoring and all cli arguments propagated.
+The payload binary must be copied to the VM (see make-initramfs.sh).
+Ths schtest payload binary is included by default.
 
-Example: `qemu/host/run-qemu.sh /home/ubuntu/linux "qemu/vm/run-schtest.sh schtest -t 'stress -c 8' -n 8 -W 2 -g mygroup -s '1,2' -w 50 -c 2 -T 10" 4 exit
+Example: `qemu/host/run-qemu.sh /home/ubuntu/linux "qemu/vm/run-payload.sh schtest -t 'stress -c 8' -n 8 -W 2 -g mygroup -s '1,2' -w 50 -c 2 -T 10" 4 exit`
+
+More complex use cases (for example launching multiple instances of schtest) may require to use custom scripts.
+See for example "qemu/vm/run-many-schtest.sh"
+
+## docker
+
+Schtest provides a containerized dev environment.
+
+The expected workflow is as follows:
+* designed use case would be to benchmark the effect of kernel patches using schtest
+* user has schtest checked out
+* user has linux checked out
+* user has docker installed
+* the container runs with the local schtest and linux mounted as volumes
+
+### once off setup
+
+Build the container:
+`docker build -t schtest .`
+
+Prepare the container:
+LOCAL_KERNEL must point to a local checkout of linux. If not available, remove the linux volume as the container comes with a linux checkout anyways.
+`docker run -it --rm -v $LOCAL_KERNEL:/linux -v $(pwd):/schtest schtest:latest ./schtest/docker/build.sh -c`
+
+Note the -c argument to generate linux configuration. This can be done once off. The configuration is the default config plus some flags set in 'docker/linux_config'.
+
+### workflow
+
+* If you change the schtest binary application or the the local linux, run the build.sh script again.
+* To run a benchmark, run:
+`docker run --device=/dev/kvm -it --rm -v $LOCAL_KERNEL:/linux -v $(pwd):/schtest -v /tmp/schtest:/out schtest:latest ./schtest/docker/run.sh qemu/vm/run-many-schtest.sh`
+
+Note that argument propagation to the VM script ('qemu/vm/run-many-schtest.sh' in the example) is not supported. Rather, modify that script as needed.
