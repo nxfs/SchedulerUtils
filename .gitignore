@@ -1,0 +1,5 @@
+initramfs/
+running.config
+schtest/Cargo.lock
+schtest/target/
+perf.data
