@@ -21,6 +21,7 @@ install_exec() {
 INITRAMFS=$1
 SHARED_DIR=$2
 PERF=$3
+SCRIPT_NAME=$4
 
 BUSYBOX=$(which busybox)
 INITRAMFS_DIR=initramfs
@@ -34,7 +35,7 @@ touch ${INITRAMFS_DIR}/etc/mdev.conf
 
 DIR=$(dirname ${BASH_SOURCE[0]})
 install_exec ${DIR}/../../schtest/target/debug/schtest ${SHARED_DIR} ${INITRAMFS_DIR}
-install_exec ${DIR}/../vm/run-schtest.sh ${SHARED_DIR} ${INITRAMFS_DIR}
+install_exec ${DIR}/../../${SCRIPT_NAME} ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec bash ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec mkdir ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec mount ${SHARED_DIR} ${INITRAMFS_DIR}
