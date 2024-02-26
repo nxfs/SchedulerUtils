@@ -41,7 +41,7 @@ COPY . /schtest
 
 # initial build
 WORKDIR /schtest/docker
-RUN ./build.sh && echo "built"
+RUN ./build.sh -c && echo "built"
 WORKDIR /
 
 # utils
