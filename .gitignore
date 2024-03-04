@@ -1,5 +1,5 @@
 initramfs/
 running.config
-schtest/Cargo.lock
-schtest/target/
+schedulerutils/Cargo.lock
+schedulerutils/target/
 perf.data

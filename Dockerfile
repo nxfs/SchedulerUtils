@@ -35,12 +35,12 @@ RUN apt-get install -y curl
 RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-# copy schtest in container
-RUN mkdir /schtest
-COPY . /schtest
+# copy schedulerutils in container
+RUN mkdir /schedulerutils
+COPY . /schedulerutils
 
 # initial build
-WORKDIR /schtest/docker
+WORKDIR /schedulerutils/docker
 RUN ./build.sh -c && echo "built"
 WORKDIR /
 

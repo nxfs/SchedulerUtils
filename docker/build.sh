@@ -20,12 +20,12 @@ while getopts "c" opt; do
   esac
 done
 
-cd /schtest/schtest
+cd /schedulerutils/schedulerutils
 cargo build
 cd /linux
 if [ $CONFIGURE -ne 0 ]; then
 	make defconfig
-	scripts/kconfig/merge_config.sh .config /schtest/docker/linux_config
+	scripts/kconfig/merge_config.sh .config /schedulerutils/docker/linux_config
 fi
 make -j $(nproc)
 make -C tools/perf

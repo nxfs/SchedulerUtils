@@ -34,7 +34,7 @@ mkdir -p ${INITRAMFS_DIR}/{bin,sbin,etc,proc,sys,dev}
 touch ${INITRAMFS_DIR}/etc/mdev.conf
 
 DIR=$(dirname ${BASH_SOURCE[0]})
-install_exec ${DIR}/../../schtest/target/debug/schtest ${SHARED_DIR} ${INITRAMFS_DIR}
+install_exec ${DIR}/../../schedulerutils/target/debug/schedulerutils ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec ${DIR}/../../${SCRIPT_NAME} ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec bash ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec mkdir ${SHARED_DIR} ${INITRAMFS_DIR}
