@@ -7,16 +7,43 @@
 #   * a generated initramfs that executes the given SCRIPT in busybox
 #   * a virtfs to share files with the host and mounted as /mnt/share
 #   * results written by the script to /mnt/share/out are copied in the local directory
-#   * drops in a shell in qemu or poweroff by specifiyng 'exit' as MODE
+#   * drops in a shell in qemu or poweroff by specifiyng 'exit' as EXIT_MODE
+
+# args
+# -k: kernel repo
+# -s: script
+# -c: cpu count
+# -m: memory
+# -e: exit mode (don't drop into shell)
 
 set -euxo pipefail
 
-KERNEL_REPO=$1
-SCRIPT=$2
-CPU_COUNT=$3
-MODE=$4
-
+OPTARG=""
+CPU_COUNT=$(nproc)
 MEMORY=16G
+EXIT_MODE="shell"
+while getopts "k:s:c:m:e" opt; do
+	case ${opt} in
+		k) KERNEL_REPO=${OPTARG}
+			;;
+		s) SCRIPT=${OPTARG}
+			;;
+		c) CPU_COUNT=${OPTARG}
+			;;
+		m) MEMORY=${OPTARG}
+			;;
+		e) EXIT_MODE="exit"
+			;;
+		:)
+			echo "Option -${OPTARG} requires an argument."
+			exit 1
+			;;
+		?)
+			echo "Invalid option: -${OPTARG}."
+			exit 1
+			;;
+	esac
+done
 
 KERNEL_IMAGE=$KERNEL_REPO/arch/x86/boot/bzImage
 PERF=$KERNEL_REPO/tools/perf/perf
@@ -53,7 +80,7 @@ mv perf.data /mnt/share/out
 EOF
 chmod u+x $MAIN_SCRIPT
 
-case $MODE in
+case $EXIT_MODE in
         exit)
                 echo "poweroff -f" >> $MAIN_SCRIPT
                 ;;
@@ -63,7 +90,7 @@ case $MODE in
 esac
 
 DIR=$(dirname ${BASH_SOURCE[0]})
-$DIR/make-initramfs.sh $INITRAMFS $SHARED_DIR $PERF $SCRIPT_NAME
+$DIR/make-initramfs.sh -i$INITRAMFS -d$SHARED_DIR -p$PERF -s$SCRIPT_NAME
 $DIR/affine-qemu.sh $CPU_COUNT > /dev/null 2>&1 &
 QEMU_AFFINE_PID=$!
 qemu-system-x86_64 \

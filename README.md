@@ -31,7 +31,7 @@ Designed to run stress workloads in qEMU, instrument them with perf and expose t
 
 #### usage
 
-`qemu/host/run-qemu.sh $KERNEL_REPO $SCRIPT $CPU_COUNT $MODE`
+`qemu/host/run-qemu.sh -k $KERNEL_REPO -s $SCRIPT -c $CPU_COUNT -m $MEMORY -e`
 
 Runs qemu with:
 * a virtual machine composed of CPU_COUNT cpus and 16G of memory
@@ -41,7 +41,7 @@ Runs qemu with:
 * a generated initramfs that includes a bunch of host binaries and executes the given SCRIPT in busybox
 * a virtfs to share files with the host and mounted as /mnt/share
 * results written by the script to /mnt/share/out are copied in the local directory
-* drops in a shell in qemu or poweroff by specifiyng 'exit' as MODE
+* doesn't drop in a shell in qemu or poweroff by specifiyng '-e' (exit mode)
 
 #### working with schedulerutils
 
@@ -50,7 +50,7 @@ That script executes a given payload in the VM with perf monitoring and all cli 
 The payload binary must be copied to the VM (see make-initramfs.sh).
 Ths schedulerutils payload binary is included by default.
 
-Example: `qemu/host/run-qemu.sh /home/ubuntu/linux "qemu/vm/run-payload.sh schedulerutils -t 'stress -c 8' -n 8 -W 2 -g mygroup -s '1,2' -w 50 -c 2 -T 10" 4 exit`
+Example: `qemu/host/run-qemu.sh -k /home/ubuntu/linux -s "qemu/vm/run-payload.sh schedulerutils -t 'stress -c 8' -n 8 -W 2 -g mygroup -s '1,2' -w 50 -c 2 -T 10" -c 4 -m 16G -e`
 
 More complex use cases (for example launching multiple instances of schedulerutils) may require to use custom scripts.
 See for example "qemu/vm/run-many-schedulerutils.sh"

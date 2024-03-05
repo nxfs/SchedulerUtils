@@ -6,8 +6,8 @@ cd ..
 KERNEL_REPO=/linux
 SCRIPT="$@"
 CPU_COUNT=$(nproc)
-MODE=exit
-/schedulerutils/qemu/host/run-qemu.sh $KERNEL_REPO $SCRIPT $CPU_COUNT $MODE
+MEMORY=16G
+/schedulerutils/qemu/host/run-qemu.sh -k$KERNEL_REPO -s$SCRIPT -c$CPU_COUNT -m$MEMORY -e
 cp -r /tmp/share/out .
 cd /out
 /linux/tools/perf/perf sched latency

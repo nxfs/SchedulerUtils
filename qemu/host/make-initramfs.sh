@@ -18,10 +18,27 @@ install_exec() {
 	done
 }
 
-INITRAMFS=$1
-SHARED_DIR=$2
-PERF=$3
-SCRIPT_NAME=$4
+OPTARG=""
+while getopts "i:d:p:s:" opt; do
+	case ${opt} in
+		i) INITRAMFS=${OPTARG}
+			;;
+		d) SHARED_DIR=${OPTARG}
+			;;
+		p) PERF=${OPTARG}
+			;;
+		s) SCRIPT_NAME=${OPTARG}
+			;;
+		:)
+			echo "Option -${OPTARG} requires an argument."
+			exit 1
+			;;
+		?)
+			echo "Invalid option: -${OPTARG}."
+			exit 1
+			;;
+	esac
+done
 
 BUSYBOX=$(which busybox)
 INITRAMFS_DIR=initramfs
@@ -61,6 +78,6 @@ chmod +x ${INITRAMFS_DIR}/init
 
 # Create the cpio archive and cleanup
 cd ${INITRAMFS_DIR}
-find . | cpio -o -H newc | gzip > ../$1
+find . | cpio -o -H newc | gzip > ../$INITRAMFS
 cd -
 rm -rf ${INITRAMFS_DIR}
