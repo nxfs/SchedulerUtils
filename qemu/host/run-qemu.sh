@@ -9,14 +9,42 @@
 #   * results written by the script to /mnt/share/out are copied in the local directory
 #   * drops in a shell in qemu or poweroff by specifiyng 'exit' as MODE
 
+# args
+# -k: kernel repo
+# -s: script
+# -c: cpu count
+# -m: memory
+# -e: exit mode (don't drop into shell)
+
 set -euxo pipefail
 
-KERNEL_REPO=$1
-SCRIPT=$2
-CPU_COUNT=$3
-MODE=$4
-
+OPTARG=""
+CPU_COUNT=$(nproc)
 MEMORY=16G
+EXIT_MODE="shell"
+while getopts "k:s:c:m:e" opt; do
+	case $opt in
+		c) KERNEL_REPO=$OPTARG
+			;;
+		m) SCRIPT=$OPTARG
+			;;
+		c) CPU_COUNT=$OPTARG
+			;;
+		m) MEMORY=$OPTARG
+			;;
+		e) EXIT_MODE="exit"
+			;;
+		\?) echo "Invalid option -$OPTARG" >&2
+			exit 1
+			;;
+	esac
+
+	case $OPTARG in
+		-*) echo "Option $opt needs a valid argument" >&2
+			exit 1
+			;;
+	esac
+done
 
 KERNEL_IMAGE=$KERNEL_REPO/arch/x86/boot/bzImage
 PERF=$KERNEL_REPO/tools/perf/perf
