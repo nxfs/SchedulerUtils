@@ -46,6 +46,17 @@ struct Args {
     #[arg(short = 'w', long = "weight", default_value = "100")]
     pub weight: u64,
 
+    /// the cfs bandwidth period of the cgroup, in usecs
+    #[arg(short = 'p', long = "cfs-bw-period-usecs", default_value = "80000")]
+    pub cfs_bw_period_us: u64,
+
+    /// the cpu quota of the cgroup, in percentage
+    /// will be translated into quota_us using the following formula
+    /// quota = (val / 100) * period * thread_count
+    /// if zero, no cfs bandwith configuration will be applied
+    #[arg(short = 'q', long = "cfs-bw-quota", default_value = "0", verbatim_doc_comment)]
+    pub cfs_bw_quota_pc: u64,
+
     /// the number of core cookies generated
     /// if non-zero, the core cookies are assigned to the task and its threads, round robin
     #[arg(
@@ -68,6 +79,8 @@ impl From<Args> for RunCommandCfg {
             cpuset: args.cpuset,
             weight: args.weight,
             cookie_count: args.cookie_count,
+            cfs_bw_period_us: args.cfs_bw_period_us,
+            cfs_bw_quota_pc: args.cfs_bw_quota_pc,
         }
     }
 }
@@ -80,6 +93,9 @@ fn main() {
         }
         if cli.weight != 100 {
             panic!("cannot specify weight without cgroups");
+        }
+        if cli.cfs_bw_quota_pc > 0 {
+            panic!("cannot specify quota without cgroups");
         }
     }
     run_command(cli.into())

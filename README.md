@@ -14,15 +14,16 @@ Launches a task and configures its cgroup tunables and cookies
 
 Example:
 
-`schedulerutils -t 'stress -c 8' -n 8 -W 2 -g mygroup -s '1,2' -w 50 -c 2 -T 10`
+`schedulerutils -t 'stress -c 8' -n 8 -W 2 -g mygroup -s '0,1' -w 50 -c 2 -T 10 -p 80000 -q 50`
 
 * `-t 'stress -c 8'`: launch the task 'stress -c 8' (imposes load on 8 threads)
 * `-n 8 -W 2`: wait for 8 threads to be spawned (excluding the main task thread) with a timeout of 2 seconds
 * `-g mygroup` create a cgroup named 'mygroup', move all spawned threads in that cgroup
-* `-s '1,2'` affine the cgroup to the cpuset '1,2'
+* `-s '0,1'` affine the cgroup to the cpuset '0,1'
 * `-w 50` assign a cpu weight of 50 to that cgroup
 * `-c 2` create two core cookies and assign them to the spawned threads, round robin
 * `-T 10` kill all spawned threads after 10 seconds
+* `-p 80000 -q 50` set cpu bandwidth period to 80000 us and quota to 50% (cpu util of all threads)
 
 ### qemu/host/run-qemu.sh
 

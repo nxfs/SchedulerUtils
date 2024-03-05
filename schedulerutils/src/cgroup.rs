@@ -57,3 +57,10 @@ pub fn set_weight(cgroup: &Cgroup, weight: u64) {
     let cpu: &CpuController = cgroup.controller_of().unwrap();
     cpu.set_shares(weight).expect("unable to set weight");
 }
+
+pub fn set_quota(cgroup: &Cgroup, quota_us: i64, period_us: u64) {
+    println!("setting cgroup {} bw to quota={} and period_us={}", cgroup.path(), quota_us, period_us);
+    let cpu: &CpuController = cgroup.controller_of().unwrap();
+    cpu.set_cfs_quota(quota_us).expect("unable to set quota");
+    cpu.set_cfs_period(period_us).expect("unable to set period");
+}

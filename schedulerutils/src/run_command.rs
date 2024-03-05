@@ -15,6 +15,8 @@ pub struct RunCommandCfg {
     pub cpuset: String,
     pub weight: u64,
     pub cookie_count: u64,
+    pub cfs_bw_period_us: u64,
+    pub cfs_bw_quota_pc: u64,
 }
 
 pub fn run_command(cfg: RunCommandCfg) {
@@ -35,6 +37,10 @@ pub fn run_command(cfg: RunCommandCfg) {
             cgroup::add_task_to_cgroup(&cgroup, *thread_id as u64);
         }
         cgroup::set_weight(&cgroup, cfg.weight);
+        if cfg.cfs_bw_quota_pc > 0 {
+            let quota_us: i64 = (cfg.cfs_bw_period_us * cfg.threads as u64 * cfg.cfs_bw_quota_pc / 100) as i64;
+            cgroup::set_quota(&cgroup, quota_us, cfg.cfs_bw_period_us)
+        }
         if !cfg.cpuset.is_empty() {
             cgroup::set_cpu_affinity(&cgroup, &cfg.cpuset);
         }
