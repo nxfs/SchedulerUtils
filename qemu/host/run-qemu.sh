@@ -7,7 +7,7 @@
 #   * a generated initramfs that executes the given SCRIPT in busybox
 #   * a virtfs to share files with the host and mounted as /mnt/share
 #   * results written by the script to /mnt/share/out are copied in the local directory
-#   * drops in a shell in qemu or poweroff by specifiyng 'exit' as MODE
+#   * drops in a shell in qemu or poweroff by specifiyng 'exit' as EXIT_MODE
 
 # args
 # -k: kernel repo
@@ -23,24 +23,23 @@ CPU_COUNT=$(nproc)
 MEMORY=16G
 EXIT_MODE="shell"
 while getopts "k:s:c:m:e" opt; do
-	case $opt in
-		c) KERNEL_REPO=$OPTARG
+	case ${opt} in
+		k) KERNEL_REPO=${OPTARG}
 			;;
-		m) SCRIPT=$OPTARG
+		s) SCRIPT=${OPTARG}
 			;;
-		c) CPU_COUNT=$OPTARG
+		c) CPU_COUNT=${OPTARG}
 			;;
-		m) MEMORY=$OPTARG
+		m) MEMORY=${OPTARG}
 			;;
 		e) EXIT_MODE="exit"
 			;;
-		\?) echo "Invalid option -$OPTARG" >&2
+		:)
+			echo "Option -${OPTARG} requires an argument."
 			exit 1
 			;;
-	esac
-
-	case $OPTARG in
-		-*) echo "Option $opt needs a valid argument" >&2
+		?)
+			echo "Invalid option: -${OPTARG}."
 			exit 1
 			;;
 	esac
@@ -81,7 +80,7 @@ mv perf.data /mnt/share/out
 EOF
 chmod u+x $MAIN_SCRIPT
 
-case $MODE in
+case $EXIT_MODE in
         exit)
                 echo "poweroff -f" >> $MAIN_SCRIPT
                 ;;
