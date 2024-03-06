@@ -1,10 +1,16 @@
+use cgroups_rs::Cgroup;
 use std::{
     process::{Child, Command},
-    time::Duration, usize,
+    time::Duration,
+    usize,
 };
 use wait_timeout::ChildExt;
 
-use crate::{cgroup, prctl, proc::wait_for_threads};
+use crate::{
+    cgroup::{self, create_cgroup},
+    prctl,
+    proc::wait_for_threads,
+};
 
 pub struct RunCommandCfg {
     pub task: String,
@@ -17,6 +23,7 @@ pub struct RunCommandCfg {
     pub cookie_group_size: u64,
     pub cfs_bw_period_us: u64,
     pub cfs_bw_quota_pc: u64,
+    pub cookie_affinity: bool,
 }
 
 pub fn run_command(cfg: RunCommandCfg) {
@@ -32,20 +39,29 @@ pub fn run_command(cfg: RunCommandCfg) {
     println!("task \"{}\" has pid {}", cfg.task, handle.id());
     let thread_ids = wait_for_threads(handle.id() as i32, cfg.threads, cfg.thread_wait);
     if let Some(ref cgroup) = maybe_cgroup {
-        cgroup::add_task_to_cgroup(&cgroup, handle.id() as u64);
-        for thread_id in thread_ids.iter() {
-            cgroup::add_task_to_cgroup(&cgroup, *thread_id as u64);
+        // with cookie affinity we are going to create sub cgroups and move tasks there instead
+        if !cfg.cookie_affinity {
+            cgroup::add_task_to_cgroup(&cgroup, handle.id() as u64);
+            for thread_id in thread_ids.iter() {
+                cgroup::add_task_to_cgroup(&cgroup, *thread_id as u64);
+            }
         }
         cgroup::set_weight(&cgroup, cfg.weight);
         if cfg.cfs_bw_quota_pc > 0 {
-            let quota_us: i64 = (cfg.cfs_bw_period_us * cfg.threads as u64 * cfg.cfs_bw_quota_pc / 100) as i64;
+            let quota_us: i64 =
+                (cfg.cfs_bw_period_us * cfg.threads as u64 * cfg.cfs_bw_quota_pc / 100) as i64;
             cgroup::set_quota(&cgroup, quota_us, cfg.cfs_bw_period_us)
         }
         if !cfg.cpuset.is_empty() {
             cgroup::set_cpu_affinity(&cgroup, &cfg.cpuset);
         }
     }
-    create_cookies(cfg.cookie_group_size, thread_ids);
+    create_cookies(
+        cfg.cookie_group_size,
+        thread_ids,
+        cfg.cookie_affinity,
+        maybe_cgroup.as_ref(),
+    );
     handles.push(handle);
     println!("waiting for all threads to join");
     while let Some(mut handle) = handles.pop() {
@@ -66,25 +82,45 @@ pub fn run_command(cfg: RunCommandCfg) {
     }
 }
 
-pub fn create_cookies(cookie_group_size: u64, thread_ids: Vec<i32>) {
+pub fn create_cookies(
+    cookie_group_size: u64,
+    thread_ids: Vec<i32>,
+    cookie_affinity: bool,
+    cgroup: Option<&Cgroup>,
+) {
     if cookie_group_size == 0 {
         return;
     }
 
     // The first (main) thread gets a separate cookie, hence the -1 + 1 dance.
-    let cookie_group_count = ((thread_ids.len() - 1) as f64 / cookie_group_size as f64).ceil() as usize + 1;
+    let cookie_group_count =
+        ((thread_ids.len() - 1) as f64 / cookie_group_size as f64).ceil() as usize + 1;
 
     let mut pid_grps: Vec<Vec<i32>> = Vec::with_capacity(cookie_group_count as usize);
+    let mut cgroups: Vec<Cgroup> = Vec::with_capacity(cookie_group_count as usize);
 
     for (idx, pid) in thread_ids.iter().enumerate() {
         if idx < cookie_group_count as usize {
             pid_grps.push(vec![]);
+            if cookie_affinity {
+                let parent_path = cgroup.unwrap().path();
+                let sub_path = format!("{}/cookie-group-{}", parent_path, idx);
+                let cookie_cgroup = create_cgroup(&sub_path).unwrap();
+                cgroups.push(cookie_cgroup);
+            }
         }
         // The first (main) thread gets a separate cookie, hence the -1 + 1 dance.
-        if idx == 0 {
-            pid_grps[0].push(*pid);
+        let grp_idx = if idx == 0 {
+            0
         } else {
-            pid_grps[(idx - 1) % (cookie_group_count - 1) as usize + 1].push(*pid);
+            (idx - 1) % (cookie_group_count - 1) as usize + 1
+        };
+        pid_grps[grp_idx].push(*pid);
+
+        if cookie_affinity {
+            let cookie_cgroup = &cgroups[grp_idx];
+            cgroup::set_core_affinity(&cookie_cgroup);
+            cgroup::add_task_to_cgroup(&cookie_cgroup, *pid as u64);
         }
     }
 

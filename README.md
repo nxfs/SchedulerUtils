@@ -14,7 +14,7 @@ Launches a task and configures its cgroup tunables and cookies
 
 Example:
 
-`schedulerutils -t 'stress -c 8' -n 8 -W 2 -g mygroup -s '0,1' -w 50 -c 2 -T 10 -p 80000 -q 50`
+`schedulerutils -t 'stress -c 8' -n 8 -W 2 -g mygroup -s '0,1' -w 50 -c 2 -T 10 -p 80000 -q 50 -a`
 
 * `-t 'stress -c 8'`: launch the task 'stress -c 8' (imposes load on 8 threads)
 * `-n 8 -W 2`: wait for 8 threads to be spawned (excluding the main task thread) with a timeout of 2 seconds
@@ -24,6 +24,7 @@ Example:
 * `-c 2` create two core cookies and assign them to the spawned threads, round robin
 * `-T 10` kill all spawned threads after 10 seconds
 * `-p 80000 -q 50` set cpu bandwidth period to 80000 us and quota to 50% (cpu util of all threads)
+* `-a` sets cookie affinity. This relies on kernel functionality that is not merged upstream: https://github.com/nxfs/linux/tree/v6.8-rc7-affine
 
 ### qemu/host/run-qemu.sh
 

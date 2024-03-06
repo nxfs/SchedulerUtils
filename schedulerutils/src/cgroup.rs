@@ -59,8 +59,25 @@ pub fn set_weight(cgroup: &Cgroup, weight: u64) {
 }
 
 pub fn set_quota(cgroup: &Cgroup, quota_us: i64, period_us: u64) {
-    println!("setting cgroup {} bw to quota={} and period_us={}", cgroup.path(), quota_us, period_us);
+    println!(
+        "setting cgroup {} bw to quota={} and period_us={}",
+        cgroup.path(),
+        quota_us,
+        period_us
+    );
     let cpu: &CpuController = cgroup.controller_of().unwrap();
     cpu.set_cfs_quota(quota_us).expect("unable to set quota");
     cpu.set_cfs_period(period_us).expect("unable to set period");
+}
+
+pub fn set_core_affinity(cgroup: &Cgroup) {
+    println!("setting cgroup {} core affinity", cgroup.path());
+    let resource = &mut cgroups_rs::Resources::default();
+    resource
+        .cpu
+        .attrs
+        .insert("cpu.affinity".to_string(), "core".to_string());
+    cgroup
+        .apply(&resource)
+        .expect("unabled to set core affinity");
 }

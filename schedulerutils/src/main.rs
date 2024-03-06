@@ -54,7 +54,12 @@ struct Args {
     /// will be translated into quota_us using the following formula
     /// quota = (val / 100) * period * thread_count
     /// if zero, no cfs bandwith configuration will be applied
-    #[arg(short = 'q', long = "cfs-bw-quota", default_value = "0", verbatim_doc_comment)]
+    #[arg(
+        short = 'q',
+        long = "cfs-bw-quota",
+        default_value = "0",
+        verbatim_doc_comment
+    )]
     pub cfs_bw_quota_pc: u64,
 
     /// the size, in number of threads, of each cookie group
@@ -69,6 +74,12 @@ struct Args {
         verbatim_doc_comment
     )]
     pub cookie_group_size: u64,
+
+    /// whether to activate cookie affinity
+    /// this is a kernel functionality that is not merged upstream
+    /// see: https://github.com/nxfs/linux/tree/v6.8-rc7-affine
+    #[arg(short = 'a', long, verbatim_doc_comment)]
+    pub cookie_affinity: bool,
 }
 
 impl From<Args> for RunCommandCfg {
@@ -84,6 +95,7 @@ impl From<Args> for RunCommandCfg {
             cookie_group_size: args.cookie_group_size,
             cfs_bw_period_us: args.cfs_bw_period_us,
             cfs_bw_quota_pc: args.cfs_bw_quota_pc,
+            cookie_affinity: args.cookie_affinity,
         }
     }
 }
@@ -100,6 +112,12 @@ fn main() {
         if cli.cfs_bw_quota_pc > 0 {
             panic!("cannot specify quota without cgroups");
         }
+        if cli.cookie_affinity {
+            panic!("cannot specify cookie affinity without cgroups");
+        }
+    }
+    if cli.cookie_affinity && cli.cookie_group_size == 0 {
+        panic!("cannot specify cookie affinity with a zero cookie group size");
     }
     run_command(cli.into())
 }
