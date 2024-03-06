@@ -1,6 +1,6 @@
 use std::{
     process::{Child, Command},
-    time::Duration,
+    time::Duration, usize,
 };
 use wait_timeout::ChildExt;
 
@@ -14,7 +14,7 @@ pub struct RunCommandCfg {
     pub cgroup: String,
     pub cpuset: String,
     pub weight: u64,
-    pub cookie_count: u64,
+    pub cookie_group_size: u64,
     pub cfs_bw_period_us: u64,
     pub cfs_bw_quota_pc: u64,
 }
@@ -45,7 +45,7 @@ pub fn run_command(cfg: RunCommandCfg) {
             cgroup::set_cpu_affinity(&cgroup, &cfg.cpuset);
         }
     }
-    create_cookies(cfg.cookie_count, thread_ids);
+    create_cookies(cfg.cookie_group_size, thread_ids);
     handles.push(handle);
     println!("waiting for all threads to join");
     while let Some(mut handle) = handles.pop() {
@@ -66,18 +66,26 @@ pub fn run_command(cfg: RunCommandCfg) {
     }
 }
 
-pub fn create_cookies(cookie_count: u64, thread_ids: Vec<i32>) {
-    if cookie_count == 0 {
+pub fn create_cookies(cookie_group_size: u64, thread_ids: Vec<i32>) {
+    if cookie_group_size == 0 {
         return;
     }
 
-    let mut pid_grps: Vec<Vec<i32>> = Vec::with_capacity(cookie_count as usize);
+    // The first (main) thread gets a separate cookie, hence the -1 + 1 dance.
+    let cookie_group_count = ((thread_ids.len() - 1) as f64 / cookie_group_size as f64).ceil() as usize + 1;
+
+    let mut pid_grps: Vec<Vec<i32>> = Vec::with_capacity(cookie_group_count as usize);
 
     for (idx, pid) in thread_ids.iter().enumerate() {
-        if idx < cookie_count as usize {
+        if idx < cookie_group_count as usize {
             pid_grps.push(vec![]);
         }
-        pid_grps[idx % cookie_count as usize].push(*pid);
+        // The first (main) thread gets a separate cookie, hence the -1 + 1 dance.
+        if idx == 0 {
+            pid_grps[0].push(*pid);
+        } else {
+            pid_grps[(idx - 1) % (cookie_group_count - 1) as usize + 1].push(*pid);
+        }
     }
 
     prctl::create_cookies(pid_grps);

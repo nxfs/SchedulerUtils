@@ -57,15 +57,18 @@ struct Args {
     #[arg(short = 'q', long = "cfs-bw-quota", default_value = "0", verbatim_doc_comment)]
     pub cfs_bw_quota_pc: u64,
 
-    /// the number of core cookies generated
-    /// if non-zero, the core cookies are assigned to the task and its threads, round robin
+    /// the size, in number of threads, of each cookie group
+    /// if zero, no cookies are used
+    /// if one, each threads has an unique cookie
+    /// if more than one, thread_count / c groups of size c are created, and tasks are added to groups in order
+    /// cookie
     #[arg(
         short = 'c',
-        long = "cookie-count",
+        long = "cookie-groups-size",
         default_value = "0",
         verbatim_doc_comment
     )]
-    pub cookie_count: u64,
+    pub cookie_group_size: u64,
 }
 
 impl From<Args> for RunCommandCfg {
@@ -78,7 +81,7 @@ impl From<Args> for RunCommandCfg {
             cgroup: args.cgroup,
             cpuset: args.cpuset,
             weight: args.weight,
-            cookie_count: args.cookie_count,
+            cookie_group_size: args.cookie_group_size,
             cfs_bw_period_us: args.cfs_bw_period_us,
             cfs_bw_quota_pc: args.cfs_bw_quota_pc,
         }
