@@ -14,7 +14,9 @@ install_exec() {
 	for lib in $(ldd $f | cut -d '(' -f 1 | cut -d '>' -f 2 | grep -v vdso); do
 		LIBDIR=$(dirname $lib)
 		mkdir -p $3/${LIBDIR}
-		cp $lib $3/$lib
+		if ! [ -f $3/$lib ]; then
+			cp $lib $3/$lib
+		fi
 	done
 }
 
@@ -54,14 +56,17 @@ DIR=$(dirname ${BASH_SOURCE[0]})
 install_exec ${DIR}/../../schedulerutils/target/debug/schedulerutils ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec ${DIR}/../../get-cpu-wake/target/debug/get-cpu-wake ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec ${DIR}/../../${SCRIPT_NAME} ${SHARED_DIR} ${INITRAMFS_DIR}
-install_exec bash ${SHARED_DIR} ${INITRAMFS_DIR}
-install_exec mkdir ${SHARED_DIR} ${INITRAMFS_DIR}
-install_exec mount ${SHARED_DIR} ${INITRAMFS_DIR}
-install_exec rm ${SHARED_DIR} ${INITRAMFS_DIR}
-install_exec dirname ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec awk ${SHARED_DIR} ${INITRAMFS_DIR}
+install_exec bash ${SHARED_DIR} ${INITRAMFS_DIR}
+install_exec cp ${SHARED_DIR} ${INITRAMFS_DIR}
+install_exec dirname ${SHARED_DIR} ${INITRAMFS_DIR}
+install_exec mkdir ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec mv ${SHARED_DIR} ${INITRAMFS_DIR}
+install_exec mount ${SHARED_DIR} ${INITRAMFS_DIR}
+install_exec nproc ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec poweroff ${SHARED_DIR} ${INITRAMFS_DIR}
+install_exec rm ${SHARED_DIR} ${INITRAMFS_DIR}
+install_exec seq ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec sleep ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec stress ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec $PERF ${SHARED_DIR} ${INITRAMFS_DIR}
