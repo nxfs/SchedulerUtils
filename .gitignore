@@ -1,5 +1,6 @@
 initramfs/
 running.config
-schedulerutils/Cargo.lock
+**/Cargo.lock
 schedulerutils/target/
+get-cpu-wake/target/
 perf.data

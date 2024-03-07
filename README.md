@@ -26,6 +26,27 @@ Example:
 * `-p 80000 -q 50` set cpu bandwidth period to 80000 us and quota to 50% (cpu util of all threads)
 * `-a` sets cookie affinity. This relies on kernel functionality that is not merged upstream: https://github.com/nxfs/linux/tree/v6.8-rc7-affine
 
+### get-cpu-wake
+
+Stresses the task CPU wake path
+
+#### build
+
+`cd get-cpu-wake && cargo build`
+
+#### usage
+
+`cargo run -- --help`
+
+Example:
+
+`get-cpu-wake -t 4 -s 2 -m 100 -M 1000`
+
+* Launches 4 tasks
+* Run busy loops, for each loop perform a work unit of weight between 100 and 1000 (work is not linear)
+* Sleep 2ms between each work unit
+* The average time between loop will be output to stdout. Use it to calibrate work units.
+
 ### qemu/host/run-qemu.sh
 
 Runs a qEMU virtual machine with a simple busybox based userspace.
