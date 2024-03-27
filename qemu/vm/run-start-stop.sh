@@ -6,8 +6,8 @@ run () {
 	S="${i}_w${W}_q${Q}"
 	cp $BASEDIR/stress $BASEDIR/s$S
 	cp $BASEDIR/get-cpu-wake $BASEDIR/w$S
-	schedulerutils --task "s$S -c $THREAD_COUNT" --threads-count $THREAD_COUNT --timeout-secs $TASK_DURATION --cgroup s$i --weight $W --cookie-groups-size 2 --cookie-affinity --cfs-bw-quota $Q &
-	schedulerutils --task "w$S -t $THREAD_COUNT -M 5000" --threads-count $THREAD_COUNT --timeout-secs $TASK_DURATION --cgroup w$i --weight $W --cookie-groups-size 2 --cookie-affinity --cfs-bw-quota $Q &
+	schedulerutils --task "s$S -c $THREAD_COUNT" --threads-count $THREAD_COUNT --timeout-secs $TASK_DURATION --cgroup $S --weight $W --cookie-groups-size 2 --cookie-affinity --cfs-bw-quota $Q &
+	schedulerutils --task "w$S -t $THREAD_COUNT -M 5000" --threads-count $THREAD_COUNT --timeout-secs $TASK_DURATION --cgroup $S --weight $W --cookie-groups-size 2 --cookie-affinity --cfs-bw-quota $Q &
 }
 
 set -euxo pipefail
@@ -36,9 +36,9 @@ do
 	# W=$((10 + $RANDOM % 90))
 	# Q=$((10 + $RANDOM % 90))
 	run 100 100
-	run 100 1
-	run 1 100
-	run 1 1
+	run 100 80
+	run 80 100
+	run 80 80
 	sleep $SLEEP_DURATION
 done
 
