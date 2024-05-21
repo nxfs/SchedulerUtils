@@ -94,6 +94,7 @@ $DIR/make-initramfs.sh -i$INITRAMFS -d$SHARED_DIR -p$PERF -s$SCRIPT_NAME
 $DIR/affine-qemu.sh $CPU_COUNT > /dev/null 2>&1 &
 QEMU_AFFINE_PID=$!
 qemu-system-x86_64 \
+	-device virtio-balloon,free-page-reporting=on \
         -nographic \
         -enable-kvm \
         -cpu host,+vmx \
