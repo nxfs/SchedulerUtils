@@ -14,7 +14,7 @@ pub fn create_cgroup(name: &str) -> Option<Cgroup> {
                 String::from(name),
                 Some(vec![String::from("cpuset"), String::from("cpu")]),
             )
-            .expect("failed to create cgroup"),
+            .unwrap_or_else(|err| panic!("failed to create cgroup {}: {}", name, err)),
         )
     }
 }
