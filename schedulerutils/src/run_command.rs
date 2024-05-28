@@ -1,15 +1,14 @@
 use cgroups_rs::Cgroup;
-use std::{
-    process::{Child, Command},
-    time::Duration,
-    usize,
-};
+use nix::sys::signal;
+use nix::sys::signal::Signal::SIGTERM;
+use nix::unistd::Pid;
+use std::{process::Command, time::Duration, usize};
 use wait_timeout::ChildExt;
 
 use crate::{
     cgroup::{self, create_cgroup},
     prctl,
-    proc::wait_for_threads,
+    proc::{get_all_children_processes_ids, wait_for_threads},
 };
 
 pub struct RunCommandCfg {
@@ -28,14 +27,13 @@ pub struct RunCommandCfg {
 
 pub fn run_command(cfg: RunCommandCfg) {
     let maybe_cgroup = cgroup::create_cgroup(&cfg.cgroup);
-    let mut handles: Vec<Child> = vec![];
     println!("spawning task \"{}\"", cfg.task);
     let tokens: Vec<&str> = cfg.task.split(" ").collect();
     let mut cmd = Command::new(tokens[0]);
     for t in tokens.iter().skip(1) {
         cmd.arg(t);
     }
-    let handle = cmd.spawn().unwrap();
+    let mut handle = cmd.spawn().unwrap();
     println!("task \"{}\" has pid {}", cfg.task, handle.id());
     let thread_ids = wait_for_threads(handle.id() as i32, cfg.threads, cfg.thread_wait);
     if let Some(ref cgroup) = maybe_cgroup {
@@ -62,23 +60,39 @@ pub fn run_command(cfg: RunCommandCfg) {
         cfg.cookie_affinity,
         maybe_cgroup.as_ref(),
     );
-    handles.push(handle);
-    println!("waiting for all threads to join");
-    while let Some(mut handle) = handles.pop() {
-        let id = handle.id();
-        if !cfg.timeout.is_zero() {
-            if handle.wait_timeout(cfg.timeout).unwrap().is_none() {
-                println!("timed out waiting for all threads to join, sending kill signal");
-                handle.kill().unwrap();
+
+    println!("waiting for task to join");
+    let id = Pid::from_raw(handle.id().try_into().unwrap());
+    if !cfg.timeout.is_zero() {
+        if handle.wait_timeout(cfg.timeout).unwrap().is_none() {
+            println!(
+                "timed out waiting for all threads to join, sending kill signal to {}",
+                id
+            );
+            if let Err(err) = signal::kill(id, Some(SIGTERM)) {
+                eprintln!("failed to kill process {}: {:?}", id, err);
             }
+        } else {
+            let out = handle.wait_with_output().unwrap();
+            println!(
+                "task {}: out='{}', err='{}'",
+                id,
+                String::from_utf8(out.stdout).unwrap(),
+                String::from_utf8(out.stderr).unwrap()
+            );
         }
-        let out = handle.wait_with_output().unwrap();
-        println!(
-            "task {}: out='{}', err='{}'",
-            id,
-            String::from_utf8(out.stdout).unwrap(),
-            String::from_utf8(out.stderr).unwrap()
-        );
+    }
+
+    // more cleanup
+    let current_pid = Pid::this();
+    for child_pid in get_all_children_processes_ids(current_pid.as_raw()) {
+        if child_pid == current_pid.as_raw() {
+            continue;
+        }
+        println!("killing remaining pid {}", child_pid);
+        if let Err(err) = signal::kill(Pid::from_raw(child_pid), Some(SIGTERM)) {
+            eprintln!("failed to kill process {}: {:?}", id, err);
+        }
     }
 }
 
