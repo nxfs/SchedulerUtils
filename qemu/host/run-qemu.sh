@@ -94,17 +94,17 @@ $DIR/make-initramfs.sh -i$INITRAMFS -d$SHARED_DIR -p$PERF -s$SCRIPT_NAME
 $DIR/affine-qemu.sh $CPU_COUNT > /dev/null 2>&1 &
 QEMU_AFFINE_PID=$!
 qemu-system-x86_64 \
-        -nographic \
-        -enable-kvm \
-        -cpu host,+vmx \
-        -smp $CPU_COUNT,threads=2 \
-        -m $MEMORY \
-        -name test,debug-threads=on \
-        -kernel $KERNEL_IMAGE \
-        -initrd $INITRAMFS \
-        -append "console=ttyS0" \
-        -serial mon:stdio \
-        -virtfs local,path=$SHARED_DIR,mount_tag=host_share,security_model=none
+	-enable-kvm \
+	-cpu host,+vmx \
+	-smp $CPU_COUNT,threads=2 \
+	-m $MEMORY \
+	-name test,debug-threads=on \
+	-kernel $KERNEL_IMAGE \
+	-initrd $INITRAMFS \
+	-display none \
+	-append "earlyprintk=serial console=ttyS0" \
+	-serial mon:stdio \
+	-virtfs local,path=$SHARED_DIR,mount_tag=host_share,security_model=none
 wait $QEMU_AFFINE_PID || { echo "qemu-affine.sh failed; aborting"; exit 1; }
 rm -f $INITRAMFS
 cp -a $SHARED_DIR/out/. ./
