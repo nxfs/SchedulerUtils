@@ -88,7 +88,7 @@ fn get_cpu(thread_id: usize, sleep_ms: u64, min_work: u64, max_work: u64) {
         keep_busy(n);
 
         if sleep_ms > 0 {
-            sleep(Duration::from_micros(sleep_ms));
+            sleep(Duration::from_millis(sleep_ms));
         }
 
         it += 1;
