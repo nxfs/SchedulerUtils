@@ -55,20 +55,26 @@ touch ${INITRAMFS_DIR}/etc/mdev.conf
 DIR=$(dirname ${BASH_SOURCE[0]})
 install_exec ${DIR}/../../schedulerutils/target/debug/schedulerutils ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec ${DIR}/../../get-cpu-wake/target/debug/get-cpu-wake ${SHARED_DIR} ${INITRAMFS_DIR}
+install_exec ${DIR}/../../cnc/cnc ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec ${DIR}/../../${SCRIPT_NAME} ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec awk ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec bash ${SHARED_DIR} ${INITRAMFS_DIR}
+install_exec cat ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec cp ${SHARED_DIR} ${INITRAMFS_DIR}
+install_exec dmesg ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec dirname ${SHARED_DIR} ${INITRAMFS_DIR}
+install_exec ls ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec mkdir ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec mv ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec mount ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec nproc ${SHARED_DIR} ${INITRAMFS_DIR}
+install_exec pkill ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec poweroff ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec rm ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec seq ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec sleep ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec stress ${SHARED_DIR} ${INITRAMFS_DIR}
+install_exec stress-ng ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec $PERF ${SHARED_DIR} ${INITRAMFS_DIR}
 
 # Copy busybox into the right place.
