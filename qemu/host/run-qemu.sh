@@ -74,6 +74,7 @@ cat > ${MAIN_SCRIPT} << EOF
 set -euxo pipefail
 rm -rf /mnt/share/out
 mkdir -p /mnt/share/out
+chmod +x /mnt/share/bin/userscript
 bash /mnt/share/bin/userscript || echo "run.sh failed"
 
 mv perf.data /mnt/share/out
