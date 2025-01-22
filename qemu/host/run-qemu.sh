@@ -103,7 +103,7 @@ qemu-system-x86_64 \
 	-kernel $KERNEL_IMAGE \
 	-initrd $INITRAMFS \
 	-display none \
-	-append "earlyprintk=serial console=ttyS0" \
+	-append "earlyprintk=serial console=ttyS0 sched_verbose" \
 	-serial mon:stdio \
 	-virtfs local,path=$SHARED_DIR,mount_tag=host_share,security_model=none
 wait $QEMU_AFFINE_PID || { echo "qemu-affine.sh failed; aborting"; exit 1; }
