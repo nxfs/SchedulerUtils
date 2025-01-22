@@ -4,3 +4,4 @@ running.config
 schedulerutils/target/
 get-cpu-wake/target/
 perf.data
+topo.txt

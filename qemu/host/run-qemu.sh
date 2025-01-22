@@ -77,6 +77,7 @@ mkdir -p /mnt/share/out
 chmod +x /mnt/share/bin/userscript
 bash /mnt/share/bin/userscript || echo "run.sh failed"
 
+grep -E "processor|core id" /proc/cpuinfo > /mnt/share/out/topo.txt
 mv perf.data /mnt/share/out
 EOF
 chmod u+x $MAIN_SCRIPT

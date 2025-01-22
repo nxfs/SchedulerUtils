@@ -63,6 +63,7 @@ install_exec chmod ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec cp ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec dmesg ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec dirname ${SHARED_DIR} ${INITRAMFS_DIR}
+install_exec grep ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec ls ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec mkdir ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec mv ${SHARED_DIR} ${INITRAMFS_DIR}
