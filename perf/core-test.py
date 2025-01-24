@@ -78,7 +78,10 @@ class CpuTimeline:
         self.cpu_events = []
 
     def add_cpu_event(self, ce):
+        if len(self.cpu_events) > 0 and ce.ts < self.cpu_events[-1].ts:
+            ce.ts = self.cpu_events[-1].ts
         self.cpu_events.append(ce)
+        return ce.ts
 
 class CookieEvent:
     def __init__(self, ts, pid, cpu):
@@ -91,7 +94,11 @@ class CookieTimeline:
         self.cookie_events = []
 
     def add_cookie_event(self, ce):
-        self.cookie_events.append(ce)
+        idx = len(self.cookie_events)
+        while idx > 0 and self.cookie_events[idx - 1].ts > ce.ts:
+            assert(ce.pid != self.cookie_events[idx - 1].pid)
+            idx -= 1
+        self.cookie_events.insert(idx, ce)
 
 class TaskState:
     def __init__(self):
@@ -104,17 +111,21 @@ class HostTimeline:
         self.cookie_timeline = defaultdict(CookieTimeline)
         self.task_states = defaultdict(TaskState)
 
-    def add_runtime_event(self, cpu, pid, start, runtime):
+    def add_runtime_event(self, cpu, pid, ts, runtime):
+        # there is one pid zero per cpu so adjust it to -cpu to make it unique
+        if pid == 0:
+            pid = -cpu
+
         cookie = self.task_states[pid].cookie
 
-        ce = CpuEvent(start, cookie)
-        self.cpu_timeline[cpu].add_cpu_event(ce)
-        ce = CpuEvent(start + runtime, None)
-        self.cpu_timeline[cpu].add_cpu_event(ce)
+        ce = CpuEvent(ts - runtime, cookie)
+        start = self.cpu_timeline[cpu].add_cpu_event(ce)
+        ce = CpuEvent(ts, None)
+        end = self.cpu_timeline[cpu].add_cpu_event(ce)
 
         ce = CookieEvent(start, pid, cpu)
         self.cookie_timeline[cookie].add_cookie_event(ce)
-        ce = CookieEvent(start + runtime, pid, None)
+        ce = CookieEvent(end, pid, None)
         self.cookie_timeline[cookie].add_cookie_event(ce)
 
     def add_cookie_event(self, pid, cookie):
@@ -180,15 +191,16 @@ def check_overlaps(ht, topo, debug_core=-1):
                 event_idxs[ts_cpu_id] += 1
             last_ts = ts
         overlaps[core.id] = overlap
+    print("***overlap report***")
     total_overlap = Overlap()
     for core_id, overlap in overlaps.items():
-        print(f"{core_id}: overlap(t={overlap.t}, max={overlap.max})")
+        print(f"{core_id}: overlap(t={overlap.t / 1000000000.0}s, max={overlap.max / 1000000.0}ms)")
         total_overlap.t += overlap.t
         if total_overlap.max < overlap.max:
             total_overlap.max = overlap.max
-    print(f"total_overlap(t={total_overlap.t}, max={total_overlap.max})")
+    print(f"total_overlap(t={total_overlap.t / 1000000000.0}s, max={total_overlap.max / 1000000.0}ms)")
 
-def check_spread(ht, topo):
+def check_spread(ht, topo, debug_cookie=-1):
     class Spread:
         def __init__(self):
             self.t = 0
@@ -196,6 +208,8 @@ def check_spread(ht, topo):
 
     spreads = {}
     for cookie, timeline in ht.cookie_timeline.items():
+        if cookie == 0:
+            continue
         pid_to_core_id = {}
         active_cores = {}
         last_ts = None
@@ -204,13 +218,15 @@ def check_spread(ht, topo):
             ts = event.ts
             if last_ts is not None:
                 active_pids = len(pid_to_core_id)
-                min_cores = math.ceil(active_pids, topo.cpus_per_core)
+                min_cores = math.ceil(active_pids / topo.cpus_per_core)
                 actual_cores = len(active_cores)
                 if actual_cores > min_cores:
                     duration = ts - last_ts
                     spread.t += (actual_cores - min_cores) * duration
                     if duration > spread.max:
                         spread.max = duration
+                        if cookie == debug_cookie:
+                            print(f"{cookie}: {ts} pid={pid} cpu_id={cpu_id}")
             pid = event.pid
             if pid in pid_to_core_id:
                 prev_core_id = pid_to_core_id[pid]
@@ -219,20 +235,25 @@ def check_spread(ht, topo):
                     del active_cores[prev_core_id]
                 del pid_to_core_id[pid]
             cpu_id = event.cpu
+            core_id = None
             if cpu_id is not None:
                 core_id = topo.cpus[cpu_id].core_id
                 if core_id not in active_cores:
                     active_cores[core_id] = 0
                 active_cores[core_id] += 1
                 pid_to_core_id[pid] = core_id
-            spreads[cookie] = spread
+            if cookie == debug_cookie:
+                print(f"{cookie}: {ts} pid={pid} cpu_id={cpu_id} core_id={core_id}, active_cores={active_cores}")
+            last_ts = ts
+        spreads[cookie] = spread
+    print("***spread report***")
     total_spread = Spread()
     for cookie, spread in spreads.items():
-        print(f"{cookie}: spread(t={spread.t}, max={spread.max})")
+        print(f"{cookie}: spread(t={spread.t / 1000000000.0}s, max={spread.max / 1000000.0}ms)")
         total_spread.t += spread.t
         if total_spread.max < spread.max:
             total_spread.max = spread.max
-    print(f"total_spread(t={total_spread.t}, max={total_spread.max})")
+    print(f"total_spread(t={total_spread.t / 1000000000.0}s, max={total_spread.max / 1000000.0}ms)")
 
 ht = None
 topo = None
@@ -247,8 +268,8 @@ def trace_end():
     if topo.cpus_per_core == 1:
         print("no HT, nothing to do")
         return
-    check_overlaps(ht, topo)
-    check_spread(ht, topo)
+    check_overlaps(ht, topo, debug_core=-1)
+    check_spread(ht, topo, debug_cookie=-1)
 
 def sched__sched_stat_runtime(event_name, context, common_cpu,
     common_secs, common_nsecs, common_pid, common_comm,
@@ -308,7 +329,6 @@ def sched__sched_setcookie(event_name, context, common_cpu,
     common_callchain, comm, pid, old_cookie, new_cookie,
     perf_sample_dict):
     ht.add_cookie_event(pid, new_cookie)
-
 
 def trace_unhandled(event_name, context, event_fields_dict, perf_sample_dict):
     raise Exception(f'Unhandled event: {event_name}')
