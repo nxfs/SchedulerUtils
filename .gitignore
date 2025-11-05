@@ -1,7 +1,11 @@
 initramfs/
+initramfs.cpio.gz
+/schedulerutils
+vm/yield-loop/busy_loop
+vm/yield-loop/yield_loop
 running.config
 **/Cargo.lock
-schedulerutils/target/
-get-cpu-wake/target/
+vm/schedulerutils/target/
+vm/get-cpu-wake/target/
 perf.data
 topo.txt

@@ -20,10 +20,8 @@ while getopts "c" opt; do
   esac
 done
 
-cd /schedulerutils/schedulerutils
-cargo build
-cd /schedulerutils/get-cpu-wake
-cargo build
+cd /schedulerutils
+make
 cd /linux
 if [ $CONFIGURE -ne 0 ]; then
 	make defconfig

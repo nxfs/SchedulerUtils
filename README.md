@@ -32,7 +32,7 @@ Stresses the task CPU wake path
 
 #### build
 
-`cd get-cpu-wake && cargo build`
+`cd vm/get-cpu-wake && cargo build`
 
 #### usage
 

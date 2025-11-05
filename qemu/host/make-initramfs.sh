@@ -53,8 +53,11 @@ mkdir -p ${INITRAMFS_DIR}/{bin,sbin,etc,proc,sys,dev}
 touch ${INITRAMFS_DIR}/etc/mdev.conf
 
 DIR=$(dirname ${BASH_SOURCE[0]})
-install_exec ${DIR}/../../schedulerutils/target/debug/schedulerutils ${SHARED_DIR} ${INITRAMFS_DIR}
-install_exec ${DIR}/../../get-cpu-wake/target/debug/get-cpu-wake ${SHARED_DIR} ${INITRAMFS_DIR}
+install_exec ${DIR}/../../vm/schedulerutils/target/debug/schedulerutils ${SHARED_DIR} ${INITRAMFS_DIR}
+install_exec ${DIR}/../../vm/get-cpu-wake/target/debug/get-cpu-wake ${SHARED_DIR} ${INITRAMFS_DIR}
+install_exec ${DIR}/../../vm/yield-loop/yield_loop ${SHARED_DIR} ${INITRAMFS_DIR}
+cp ${DIR}/../../vm/yield-loop/yield_loop ${DIR}/../../vm/yield-loop/busy_loop
+install_exec ${DIR}/../../vm/yield-loop/busy_loop ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec ${DIR}/../../${SCRIPT_NAME} ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec awk ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec bash ${SHARED_DIR} ${INITRAMFS_DIR}
@@ -76,6 +79,8 @@ install_exec seq ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec sleep ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec stress ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec stress-ng ${SHARED_DIR} ${INITRAMFS_DIR}
+install_exec taskset ${SHARED_DIR} ${INITRAMFS_DIR}
+install_exec trinity ${SHARED_DIR} ${INITRAMFS_DIR}
 install_exec $PERF ${SHARED_DIR} ${INITRAMFS_DIR}
 
 # Copy busybox into the right place.
